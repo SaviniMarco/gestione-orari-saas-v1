@@ -1,4 +1,42 @@
-<!DOCTYPE html>
+<div id="plans-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px">
+      <div onclick="avviaCheckout('mensile')"
+        style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center"
+        onmouseover="this.style.borderColor='#1565C0';this.style.background='#F3F8FF'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">MENSILE</div>
+        <div style="font-size:28px;font-weight:800;color:#1565C0">€9,90</div>
+        <div style="font-size:11px;color:#888">/mese · rinnovo automatico</div>
+      </div>
+      <div onclick="avviaCheckout('trimest')" style="border:2px solid #E0E0E0;border-radius:10px;
+        padding:16px;cursor:pointer;text-align:center;position:relative"
+        onmouseover="this.style.borderColor='#2E7D32';this.style.background='#F1F8F1'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+          background:#2E7D32;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 16%</div>
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">3 MESI</div>
+        <div style="font-size:28px;font-weight:800;color:#2E7D32">€24,90</div>
+        <div style="font-size:11px;color:#888">8,30€/mese</div>
+      </div>
+      <div onclick="avviaCheckout('semest')" style="border:2px solid #E0E0E0;border-radius:10px;
+        padding:16px;cursor:pointer;text-align:center;position:relative"
+        onmouseover="this.style.borderColor='#F57F17';this.style.background='#FFF8F0'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+          background:#F57F17;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 25%</div>
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">6 MESI</div>
+        <div style="font-size:28px;font-weight:800;color:#F57F17">€44,90</div>
+        <div style="font-size:11px;color:#888">7,48€/mese</div>
+      </div>
+      <div onclick="avviaCheckout('annuale')" style="border:2px solid #6A1B9A;border-radius:10px;
+        padding:16px;cursor:pointer;text-align:center;position:relative;background:#FAF5FF"
+        onmouseover="this.style.background='#F3E8FF'"
+        onmouseout="this.style.background='#FAF5FF'">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
+          background:#6A1B9A;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">MIGLIORE OFFERTA</div>
+        <div style="font-size:11px;color:#6A1B9A;font-weight:600;margin-bottom:4px">ANNUALE</div>
+        <div style="font-size:28px;font-weight:800;color:#6A1B9A">€79,90</div>
+        <div style="font-size:11px;color:#888">6,66€/mese</div>
+      </div><!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -217,7 +255,7 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
     </div>
   </div>
 </div>
-<div id="subscription-screen" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;font-family:Arial,sans-serif;overflow-y:auto" onclick="if(event.target===this)this.style.display='none'">
+<div id="subscription-screen" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;font-family:Arial,sans-serif;overflow-y:auto">
   <div style="background:#fff;border-radius:16px;padding:36px;max-width:560px;width:95vw;text-align:center;margin:20px auto;position:relative">
     <button onclick="document.getElementById('subscription-screen').style.display='none'"
       style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;
@@ -309,7 +347,7 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
   <button class="bh" onclick="apriMenuApri()" id="btn-apri">📂 Apri</button>
   <button class="bh" onclick="apriArchivioRichieste()" id="btn-richieste" style="background:#2E7D32;color:#fff">📋 Richieste</button>
   <button class="bh" style="background:#5C6BC0;color:#fff" onclick="apriMenuStampa()" id="btn-stampa">🖨️ Stampa</button>
-  <button class="bh" style="background:#43A047;color:#fff" onclick="esportaRiepilogo()" id="btn-condividi">📤 Condividi</button>
+  <button class="bh" style="background:#43A047;color:#fff" onclick="apriArchivioRichieste()" id="btn-condividi">📋 Richieste</button>
   <button class="bh" style="background:#00695C;color:#fff" onclick="esportaZucchetti()" id="btn-zucchetti">📊 Zucchetti</button>
   <button class="bh acc" onclick="nuovaSett()" id="btn-nuova">🆕 Nuova sett.</button>
   <button class="bh" style="background:#F57C00;color:#fff" onclick="apriCopiaSett()" id="btn-copia">📋 Copia sett.</button>
@@ -550,48 +588,39 @@ const APP_URL = window.location.origin;
 // Avvia checkout Stripe per il piano selezionato
 async function avviaCheckout(plan){
   if(!_isCloud || !_companyId || !_currentUser){
-    alert('Devi essere loggato per procedere al pagamento');
+    notify('ℹ️ Accedi per attivare un abbonamento');
     return;
   }
 
   const loading = document.getElementById('checkout-loading');
   const grid    = document.getElementById('plans-grid');
-  if(loading) loading.style.display = 'block';
-  if(grid)    grid.style.pointerEvents = 'none';
+
+  // Reset stato precedente
+  if(grid){ grid.style.pointerEvents = 'none'; grid.style.opacity = '.6'; }
+  if(loading){ loading.style.display='block'; loading.style.color='#1565C0';
+    loading.textContent='⏳ Reindirizzamento a Stripe...'; }
 
   try {
-    console.log('[Stripe] avviaCheckout:', plan, 'user:', _companyId);
     const res = await fetch('/.netlify/functions/create-checkout', {
       method:  'POST',
-      headers: {'Content-Type': 'application/json'},
-      body:    JSON.stringify({
-        plan,
-        userId:    _companyId,
-        userEmail: _currentUser.email,
-      }),
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({ plan, userId:_companyId, userEmail:_currentUser.email }),
     });
 
     const data = await res.json();
-
-    if(!res.ok || !data.url){
-      throw new Error(data.error || 'Errore nella creazione del pagamento');
-    }
-
-    // Redirect a Stripe Checkout
+    if(!res.ok || !data.url) throw new Error(data.error || 'Errore pagamento');
     window.location.href = data.url;
 
-  } catch(err) {
-    console.error('avviaCheckout error:', err);
-    if(loading){
-      loading.textContent = '❌ Errore: ' + err.message;
-      loading.style.color = '#C62828';
-    }
-    if(grid) grid.style.pointerEvents = 'auto';
-    setTimeout(()=>{
-      if(loading){loading.style.display='none'; loading.style.color='#1565C0'; loading.textContent='⏳ Reindirizzamento a Stripe...';}
-    }, 4000);
+  } catch(err){
+    console.error('[avviaCheckout]', err.message);
+    if(loading){ loading.textContent='❌ '+err.message; loading.style.color='#C62828'; }
+    // SEMPRE ripristina click dopo errore
+    if(grid){ grid.style.pointerEvents='auto'; grid.style.opacity='1'; }
+    setTimeout(()=>{ if(loading) loading.style.display='none'; }, 5000);
   }
 }
+
+
 
 // Controlla se l'URL ha ?payment=success dopo redirect da Stripe
 async function checkPaymentReturn(){
@@ -776,25 +805,26 @@ function _obStep0(){
         In meno di 2 minuti sarai pronto a creare i primi turni.
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px">
-        ${[
-          ['👤','Dipendenti','Aggiungi il tuo team'],
-          ['🏪','Reparti','Organizza i tuoi spazi'],
-          ['⚙️','Parametri','Imposta obiettivi base']
-        ].map(([ico,tit,sub])=>`
+        ${[['👤','Dipendenti','Aggiungi il tuo team'],['🏪','Reparti','Organizza i tuoi spazi'],['⚙️','Parametri','Imposta obiettivi base']].map(([ico,tit,sub])=>`
           <div style="background:#F8FAFF;border:1px solid #E3F2FD;border-radius:10px;padding:14px;text-align:center">
             <div style="font-size:24px;margin-bottom:6px">${ico}</div>
             <div style="font-size:12px;font-weight:700;color:#1565C0">${tit}</div>
             <div style="font-size:10px;color:#888;margin-top:3px">${sub}</div>
-          </div>
-        `).join('')}
+          </div>`).join('')}
       </div>
       <button onclick="_obNext(1)"
         style="width:100%;padding:14px;background:#1565C0;color:#fff;border:none;border-radius:10px;
-          font-size:15px;font-weight:700;cursor:pointer">
+          font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px">
         🚀 Inizia la configurazione
+      </button>
+      <button onclick="document.getElementById('ob-overlay')?.remove()"
+        style="width:100%;padding:10px;background:#fff;border:1px solid #DDD;border-radius:10px;
+          font-size:13px;color:#888;cursor:pointer">
+        Salta — configuro dopo
       </button>
     </div>`;
 }
+
 
 // ── STEP 1: Dipendenti (obbligatorio) ──
 function _obStep1(){
@@ -1830,6 +1860,7 @@ let D = {
   entries:{LUN:[],MAR:[],MER:[],GIO:[],VEN:[],SAB:[],DOM:[]},
   ferie_annuali:{},
   slot_colors:{},
+  richieste_ferie:[],
 };
 
 // Inizializza entries con dati dal file
@@ -4343,6 +4374,17 @@ function apriCellaFerie(key){
   modal.querySelector('#cf-cancella').onclick=()=>{
     delete D.ferie_annuali[anno][_ferieNome][key];
     div.remove();setMod();renderFerie();
+    // Proponi documento richiesta per ferie/permesso
+    if(tipo && tipo !== 'festivita' && tipo !== 'altro'){
+      setTimeout(()=>{
+        const TIPO_LABEL = {ferie:'Ferie',permesso:'Permesso',permesso_parziale:'Permesso parziale',malattia:'Malattia',assenza:'Assenza'};
+        const label = TIPO_LABEL[tipo] || tipo;
+        if(confirm('📋 Vuoi generare il documento di richiesta ' + label + ' per ' + _ferieNome + '?\n\n' +
+          'Periodo: ' + dalStr + ' → ' + alStr + (note ? '\nNote: ' + note : ''))){
+          apriNuovaRichiesta(_ferieNome, dalStr, alStr, tipo, note);
+        }
+      }, 300);
+    }
   };
 
   modal.querySelector('#cf-salva').onclick=()=>{
@@ -8585,12 +8627,13 @@ async function generaDocumentoRichiesta(req, modalita){
 }
 
 // ── Modal nuova richiesta ferie ──
-function apriNuovaRichiesta(dipendente, dal, al){
+function apriNuovaRichiesta(dipendente, dal, al, tipoPrecomp, notePrecomp){
   const existing = document.getElementById('rif-overlay');
   if(existing) existing.remove();
 
-  const nm  = Object.keys(D.turni_db || {}).sort();
+  const nm   = Object.keys(D.turni_db || {}).sort();
   const oggi = new Date().toISOString().split('T')[0];
+  const tp   = tipoPrecomp || 'ferie';
 
   const overlay = document.createElement('div');
   overlay.id = 'rif-overlay';
@@ -8600,40 +8643,33 @@ function apriNuovaRichiesta(dipendente, dal, al){
 
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-      width:480px;max-width:95vw;overflow:hidden">
+      width:500px;max-width:95vw;overflow:hidden">
       <div style="background:#2E7D32;color:#fff;padding:14px 18px;display:flex;align-items:center">
-        <span style="font-size:15px;font-weight:700">📋 Nuova richiesta</span>
+        <span style="font-size:15px;font-weight:700">📋 Richiesta ${tp==='ferie'?'ferie':tp==='permesso'?'permesso':'assenza'}</span>
         <div style="flex:1"></div>
         <button onclick="document.getElementById('rif-overlay').remove()"
           style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
-            padding:3px 9px;cursor:pointer">✕</button>
+            padding:3px 9px;cursor:pointer;font-size:14px">✕</button>
       </div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
-              Dipendente *
-            </label>
-            <select id="rif-dip" style="width:100%;padding:8px;border:1px solid #DDD;
-              border-radius:6px;font-size:13px">
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Dipendente *</label>
+            <select id="rif-dip" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
               ${nm.map(n=>`<option value="${n}" ${n===dipendente?'selected':''}>${n}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
-              Tipo *
-            </label>
-            <select id="rif-tipo" style="width:100%;padding:8px;border:1px solid #DDD;
-              border-radius:6px;font-size:13px">
-              <option value="ferie">🏖️ Ferie</option>
-              <option value="permesso">📋 Permesso</option>
-              <option value="permesso_parziale">📋 Permesso parziale</option>
-              <option value="assenza">📝 Assenza</option>
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Tipo *</label>
+            <select id="rif-tipo" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
+              <option value="ferie" ${tp==='ferie'?'selected':''}>🏖️ Ferie</option>
+              <option value="permesso" ${tp==='permesso'?'selected':''}>📋 Permesso</option>
+              <option value="permesso_parziale" ${tp==='permesso_parziale'?'selected':''}>📋 Permesso parziale</option>
+              <option value="assenza" ${tp==='assenza'?'selected':''}>📝 Assenza</option>
+              <option value="malattia" ${tp==='malattia'?'selected':''}>🤒 Malattia</option>
             </select>
           </div>
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
             <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Dal *</label>
@@ -8646,31 +8682,30 @@ function apriNuovaRichiesta(dipendente, dal, al){
               style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
           </div>
         </div>
-
-        <div id="rif-ore-row" style="display:none">
-          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
-            Ore (per permesso parziale)
-          </label>
+        <div id="rif-ore-row" style="${tp==='permesso_parziale'?'':'display:none'}">
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Ore</label>
           <input type="number" id="rif-ore" min="0.5" max="8" step="0.5" value="4"
             style="width:80px;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
         </div>
-
         <div>
-          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
-            Note / Motivazione
-          </label>
-          <textarea id="rif-note" rows="3" placeholder="es. Motivi personali, visita medica, ecc."
-            style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;
-              box-sizing:border-box;resize:vertical"></textarea>
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Note / Motivazione</label>
+          <textarea id="rif-note" rows="3"
+            style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box;resize:vertical"
+            >${notePrecomp||''}</textarea>
         </div>
-
-        <div style="display:flex;gap:8px;padding-top:4px">
+        <div style="background:#E8F5E9;border-radius:8px;padding:10px 12px;font-size:11px;color:#2E7D32">
+          📄 Il documento verrà generato con spazio per la firma del dipendente e dello Store Manager
+        </div>
+        <div style="display:flex;gap:8px">
           <button onclick="_salvaRichiesta()"
             style="flex:1;padding:11px;background:#2E7D32;color:#fff;border:none;border-radius:8px;
-              font-size:13px;font-weight:700;cursor:pointer">✅ Salva richiesta</button>
+              font-size:13px;font-weight:700;cursor:pointer">✅ Salva</button>
           <button onclick="_salvaRichiesta('pdf')"
             style="padding:11px 16px;background:#1565C0;color:#fff;border:none;border-radius:8px;
-              font-size:13px;font-weight:700;cursor:pointer">⬇️ Salva + PDF</button>
+              font-size:13px;font-weight:700;cursor:pointer" title="Salva e genera PDF">⬇️ PDF</button>
+          <button onclick="_salvaRichiesta('stampa')"
+            style="padding:11px 16px;background:#37474F;color:#fff;border:none;border-radius:8px;
+              font-size:13px;font-weight:700;cursor:pointer" title="Salva e stampa">🖨️</button>
           <button onclick="document.getElementById('rif-overlay').remove()"
             style="padding:11px 14px;background:#fff;border:1px solid #DDD;border-radius:8px;
               font-size:12px;cursor:pointer">Annulla</button>
@@ -8678,7 +8713,6 @@ function apriNuovaRichiesta(dipendente, dal, al){
       </div>
     </div>`;
 
-  // Mostra campo ore solo per permesso parziale
   overlay.querySelector('#rif-tipo').addEventListener('change', function(){
     document.getElementById('rif-ore-row').style.display =
       this.value === 'permesso_parziale' ? 'block' : 'none';
@@ -8687,41 +8721,39 @@ function apriNuovaRichiesta(dipendente, dal, al){
   document.body.appendChild(overlay);
 }
 
-async function _salvaRichiesta(modalitaPdf){
+
+async function _salvaRichiesta(modalita){
   const dip  = document.getElementById('rif-dip')?.value;
   const tipo = document.getElementById('rif-tipo')?.value;
   const dal  = document.getElementById('rif-dal')?.value;
   const al   = document.getElementById('rif-al')?.value;
-  const ore  = document.getElementById('rif-ore')?.value;
-  const note = document.getElementById('rif-note')?.value?.trim();
+  const ore  = parseFloat(document.getElementById('rif-ore')?.value)||null;
+  const note = document.getElementById('rif-note')?.value?.trim()||'';
 
-  if(!dip || !tipo || !dal || !al){ alert('Compila tutti i campi obbligatori'); return; }
+  if(!dip||!tipo||!dal||!al){ alert('Compila tutti i campi obbligatori'); return; }
   if(new Date(dal) > new Date(al)){ alert('"Al" deve essere uguale o successiva a "Dal"'); return; }
 
-  const req = { dipendente:dip, tipo, data_dal:dal, data_al:al,
-    ore: tipo==='permesso_parziale'?parseFloat(ore)||4:null, note, stato:'richiesto' };
+  const req = {
+    dipendente: dip, tipo, data_dal: dal, data_al: al,
+    ore: tipo==='permesso_parziale' ? (ore||4) : null,
+    note, stato: 'richiesto'
+  };
 
   const saved = await salvaRichiestaFerie(req);
-  if(!saved){ alert('Errore nel salvataggio'); return; }
+  if(!saved){ alert('Errore nel salvataggio — riprova'); return; }
 
   document.getElementById('rif-overlay')?.remove();
-  notify('✅ Richiesta salvata' + (modalitaPdf?' — generazione PDF...':''));
 
-  // Aggiorna anche D.ferie_annuali per il calendario
-  const d0 = new Date(dal+'T00:00:00');
-  const d1 = new Date(al+'T00:00:00');
-  if(!D.ferie_annuali) D.ferie_annuali = {};
-  for(let d=new Date(d0); d<=d1; d.setDate(d.getDate()+1)){
-    const ak  = String(d.getFullYear());
-    const dk  = ak+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    if(!D.ferie_annuali[ak]) D.ferie_annuali[ak] = {};
-    if(!D.ferie_annuali[ak][dip]) D.ferie_annuali[ak][dip] = {};
-    D.ferie_annuali[ak][dip][dk] = { tipo, ore:req.ore, note };
+  if(modalita === 'pdf'){
+    notify('⬇️ Generazione PDF...');
+    await generaDocumentoRichiesta({...req, id: saved.id}, 'pdf');
+  } else if(modalita === 'stampa'){
+    await generaDocumentoRichiesta({...req, id: saved.id}, 'stampa');
+  } else {
+    notify('✅ Richiesta salvata per ' + dip);
   }
-  setMod();
-
-  if(modalitaPdf) await generaDocumentoRichiesta({...req, id: saved.id}, 'pdf');
 }
+
 
 // ── Archivio richieste ──
 async function apriArchivioRichieste(){
@@ -8857,6 +8889,10 @@ async function _archRifiuta(id){
 }
 
 </script>
+
+
+
+
 
 
 

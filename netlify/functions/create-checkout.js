@@ -3,10 +3,10 @@
 // Body: { plan, userId, userEmail }
 
 const PLANS = {
-  mensile:  { price_id: process.env.STRIPE_PRICE_MENSILE,  label: 'Piano Mensile',  months: 1  },
-  trimest:  { price_id: process.env.STRIPE_PRICE_TRIMEST,  label: 'Piano 3 Mesi',   months: 3  },
-  semest:   { price_id: process.env.STRIPE_PRICE_SEMEST,   label: 'Piano 6 Mesi',   months: 6  },
-  annuale:  { price_id: process.env.STRIPE_PRICE_ANNUALE,  label: 'Piano Annuale',  months: 12 },
+  mensile:  { price_id: process.env.STRIPE_PRICE_MENSILE,      label: 'Piano Mensile',  months: 1  },
+  trimest:  { price_id: process.env.STRIPE_PRICE_TRIMESTRALE,  label: 'Piano 3 Mesi',   months: 3  },
+  semest:   { price_id: process.env.STRIPE_PRICE_SEMESTRALE,   label: 'Piano 6 Mesi',   months: 6  },
+  annuale:  { price_id: process.env.STRIPE_PRICE_ANNUALE,      label: 'Piano Annuale',  months: 12 },
 };
 
 exports.handler = async (event) => {
@@ -14,21 +14,16 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // ── Valida env vars prima di tutto ──
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
-    console.error('[create-checkout] STRIPE_SECRET_KEY non trovata nelle env vars');
-    return { statusCode: 500, body: JSON.stringify({
-      error: 'Configurazione server incompleta — contattare supporto'
-    })};
+    console.error('[create-checkout] STRIPE_SECRET_KEY mancante');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Configurazione server incompleta' }) };
   }
 
-  // ── Init Stripe con chiave esplicita ──
   const stripe = require('stripe')(stripeKey);
 
   try {
-    const body = JSON.parse(event.body || '{}');
-    const { plan, userId, userEmail } = body;
+    const { plan, userId, userEmail } = JSON.parse(event.body || '{}');
 
     if (!plan || !PLANS[plan]) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Piano non valido: ' + plan }) };
@@ -40,7 +35,8 @@ exports.handler = async (event) => {
     const planData = PLANS[plan];
     if (!planData.price_id) {
       return { statusCode: 400, body: JSON.stringify({
-        error: 'Price ID non configurato per: ' + plan + ' — verificare env vars STRIPE_PRICE_*'
+        error: 'Price ID mancante per: ' + plan + ' (env: STRIPE_PRICE_' +
+          { mensile:'MENSILE', trimest:'TRIMESTRALE', semest:'SEMESTRALE', annuale:'ANNUALE' }[plan] + ')'
       })};
     }
 
@@ -59,7 +55,7 @@ exports.handler = async (event) => {
       locale: 'it',
     });
 
-    console.log('[create-checkout] OK session:', session.id, 'user:', userId, 'plan:', plan);
+    console.log('[create-checkout] OK:', session.id, plan, userId);
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -68,9 +64,6 @@ exports.handler = async (event) => {
 
   } catch (err) {
     console.error('[create-checkout] Error:', err.message);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 };
