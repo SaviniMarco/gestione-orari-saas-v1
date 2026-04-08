@@ -1,42 +1,4 @@
-<div id="plans-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px">
-      <div onclick="avviaCheckout('mensile')"
-        style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center"
-        onmouseover="this.style.borderColor='#1565C0';this.style.background='#F3F8FF'"
-        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">MENSILE</div>
-        <div style="font-size:28px;font-weight:800;color:#1565C0">€9,90</div>
-        <div style="font-size:11px;color:#888">/mese · rinnovo automatico</div>
-      </div>
-      <div onclick="avviaCheckout('trimest')" style="border:2px solid #E0E0E0;border-radius:10px;
-        padding:16px;cursor:pointer;text-align:center;position:relative"
-        onmouseover="this.style.borderColor='#2E7D32';this.style.background='#F1F8F1'"
-        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
-        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
-          background:#2E7D32;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 16%</div>
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">3 MESI</div>
-        <div style="font-size:28px;font-weight:800;color:#2E7D32">€24,90</div>
-        <div style="font-size:11px;color:#888">8,30€/mese</div>
-      </div>
-      <div onclick="avviaCheckout('semest')" style="border:2px solid #E0E0E0;border-radius:10px;
-        padding:16px;cursor:pointer;text-align:center;position:relative"
-        onmouseover="this.style.borderColor='#F57F17';this.style.background='#FFF8F0'"
-        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
-        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
-          background:#F57F17;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 25%</div>
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">6 MESI</div>
-        <div style="font-size:28px;font-weight:800;color:#F57F17">€44,90</div>
-        <div style="font-size:11px;color:#888">7,48€/mese</div>
-      </div>
-      <div onclick="avviaCheckout('annuale')" style="border:2px solid #6A1B9A;border-radius:10px;
-        padding:16px;cursor:pointer;text-align:center;position:relative;background:#FAF5FF"
-        onmouseover="this.style.background='#F3E8FF'"
-        onmouseout="this.style.background='#FAF5FF'">
-        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);
-          background:#6A1B9A;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">MIGLIORE OFFERTA</div>
-        <div style="font-size:11px;color:#6A1B9A;font-weight:600;margin-bottom:4px">ANNUALE</div>
-        <div style="font-size:28px;font-weight:800;color:#6A1B9A">€79,90</div>
-        <div style="font-size:11px;color:#888">6,66€/mese</div>
-      </div><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -347,7 +309,7 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
   <button class="bh" onclick="apriMenuApri()" id="btn-apri">📂 Apri</button>
   <button class="bh" onclick="apriArchivioRichieste()" id="btn-richieste" style="background:#2E7D32;color:#fff">📋 Richieste</button>
   <button class="bh" style="background:#5C6BC0;color:#fff" onclick="apriMenuStampa()" id="btn-stampa">🖨️ Stampa</button>
-  <button class="bh" style="background:#43A047;color:#fff" onclick="apriArchivioRichieste()" id="btn-condividi">📋 Richieste</button>
+  <button class="bh" style="background:#43A047;color:#fff" onclick="esportaRiepilogo()" id="btn-condividi">📤 Condividi</button>
   <button class="bh" style="background:#00695C;color:#fff" onclick="esportaZucchetti()" id="btn-zucchetti">📊 Zucchetti</button>
   <button class="bh acc" onclick="nuovaSett()" id="btn-nuova">🆕 Nuova sett.</button>
   <button class="bh" style="background:#F57C00;color:#fff" onclick="apriCopiaSett()" id="btn-copia">📋 Copia sett.</button>
@@ -591,35 +553,26 @@ async function avviaCheckout(plan){
     notify('ℹ️ Accedi per attivare un abbonamento');
     return;
   }
-
   const loading = document.getElementById('checkout-loading');
   const grid    = document.getElementById('plans-grid');
-
-  // Reset stato precedente
-  if(grid){ grid.style.pointerEvents = 'none'; grid.style.opacity = '.6'; }
+  if(grid){ grid.style.pointerEvents='none'; grid.style.opacity='.6'; }
   if(loading){ loading.style.display='block'; loading.style.color='#1565C0';
     loading.textContent='⏳ Reindirizzamento a Stripe...'; }
-
-  try {
-    const res = await fetch('/.netlify/functions/create-checkout', {
-      method:  'POST',
-      headers: {'Content-Type':'application/json'},
-      body:    JSON.stringify({ plan, userId:_companyId, userEmail:_currentUser.email }),
+  try{
+    const res = await fetch('/.netlify/functions/create-checkout',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({plan, userId:_companyId, userEmail:_currentUser.email}),
     });
-
     const data = await res.json();
-    if(!res.ok || !data.url) throw new Error(data.error || 'Errore pagamento');
+    if(!res.ok||!data.url) throw new Error(data.error||'Errore pagamento');
     window.location.href = data.url;
-
-  } catch(err){
-    console.error('[avviaCheckout]', err.message);
-    if(loading){ loading.textContent='❌ '+err.message; loading.style.color='#C62828'; }
-    // SEMPRE ripristina click dopo errore
-    if(grid){ grid.style.pointerEvents='auto'; grid.style.opacity='1'; }
-    setTimeout(()=>{ if(loading) loading.style.display='none'; }, 5000);
+  }catch(err){
+    console.error('[avviaCheckout]',err.message);
+    if(loading){loading.textContent='❌ '+err.message;loading.style.color='#C62828';}
+    if(grid){grid.style.pointerEvents='auto';grid.style.opacity='1';}
+    setTimeout(()=>{if(loading)loading.style.display='none';},5000);
   }
 }
-
 
 
 // Controlla se l'URL ha ?payment=success dopo redirect da Stripe
@@ -801,16 +754,7 @@ function _obStep0(){
       <div style="font-size:48px;margin-bottom:12px">👋</div>
       <div style="font-size:22px;font-weight:700;color:#1565C0;margin-bottom:8px">Configura il tuo negozio</div>
       <div style="font-size:14px;color:#666;margin-bottom:28px;line-height:1.6">
-        Ti guidiamo in <b>3 semplici step</b>.<br>
-        In meno di 2 minuti sarai pronto a creare i primi turni.
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px">
-        ${[['👤','Dipendenti','Aggiungi il tuo team'],['🏪','Reparti','Organizza i tuoi spazi'],['⚙️','Parametri','Imposta obiettivi base']].map(([ico,tit,sub])=>`
-          <div style="background:#F8FAFF;border:1px solid #E3F2FD;border-radius:10px;padding:14px;text-align:center">
-            <div style="font-size:24px;margin-bottom:6px">${ico}</div>
-            <div style="font-size:12px;font-weight:700;color:#1565C0">${tit}</div>
-            <div style="font-size:10px;color:#888;margin-top:3px">${sub}</div>
-          </div>`).join('')}
+        Ti guidiamo in <b>3 semplici step</b>.<br>In meno di 2 minuti sarai pronto.
       </div>
       <button onclick="_obNext(1)"
         style="width:100%;padding:14px;background:#1565C0;color:#fff;border:none;border-radius:10px;
@@ -4374,16 +4318,17 @@ function apriCellaFerie(key){
   modal.querySelector('#cf-cancella').onclick=()=>{
     delete D.ferie_annuali[anno][_ferieNome][key];
     div.remove();setMod();renderFerie();
-    // Proponi documento richiesta per ferie/permesso
-    if(tipo && tipo !== 'festivita' && tipo !== 'altro'){
+    // Dopo salvataggio ferie/permesso → proponi documento richiesta
+    if(tipo && !['festivita','altro'].includes(tipo)){
+      const TLBL={ferie:'Ferie',permesso:'Permesso',permesso_parziale:'Permesso parziale',
+                  malattia:'Malattia',assenza:'Assenza'};
+      const lbl = TLBL[tipo]||tipo;
       setTimeout(()=>{
-        const TIPO_LABEL = {ferie:'Ferie',permesso:'Permesso',permesso_parziale:'Permesso parziale',malattia:'Malattia',assenza:'Assenza'};
-        const label = TIPO_LABEL[tipo] || tipo;
-        if(confirm('📋 Vuoi generare il documento di richiesta ' + label + ' per ' + _ferieNome + '?\n\n' +
-          'Periodo: ' + dalStr + ' → ' + alStr + (note ? '\nNote: ' + note : ''))){
+        if(confirm('📋 Vuoi generare il documento di richiesta '+lbl+' per '+_ferieNome+'?\n'
+          +'Periodo: '+dalStr+' → '+alStr+(note?'\nNote: '+note:''))){
           apriNuovaRichiesta(_ferieNome, dalStr, alStr, tipo, note);
         }
-      }, 300);
+      },300);
     }
   };
 
@@ -8200,235 +8145,349 @@ document.addEventListener('keydown', function(e){
 // STAMPA FERIE AVANZATA — selezione periodo + dipendente/PV
 // ═══════════════════════════════════════════════════════════════════
 function apriStampaCalendarioAvanzata(){
-  const existing = document.getElementById('cal-print-overlay');
-  if(existing){ existing.remove(); return; }
+  document.getElementById('cal-print-overlay')?.remove();
 
   const oggi = new Date();
   const primoMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1).toISOString().split('T')[0];
   const fineAnno  = new Date(oggi.getFullYear(), 11, 31).toISOString().split('T')[0];
-  const nm = Object.keys(D.turni_db || {}).sort();
+  const nm = Object.keys(D.turni_db||{}).sort();
 
   const overlay = document.createElement('div');
   overlay.id = 'cal-print-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.5);'
     +'display:flex;align-items:center;justify-content:center;font-family:inherit';
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-      width:480px;max-width:95vw;overflow:hidden">
-      <div style="background:#6A1B9A;color:#fff;padding:14px 18px;display:flex;align-items:center">
-        <span style="font-size:15px;font-weight:700">📅 Stampa calendario ferie</span>
+      width:520px;max-width:96vw;max-height:90vh;overflow-y:auto">
+      <div style="background:#6A1B9A;color:#fff;padding:14px 18px;display:flex;
+        align-items:center;position:sticky;top:0;z-index:1">
+        <span style="font-size:15px;font-weight:700">📅 Report calendario ferie</span>
         <div style="flex:1"></div>
         <button onclick="document.getElementById('cal-print-overlay').remove()"
           style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
-            padding:3px 9px;cursor:pointer;font-size:13px">✕</button>
+            padding:3px 10px;cursor:pointer;font-size:15px">✕</button>
       </div>
-      <div style="padding:20px">
+      <div style="padding:18px;display:flex;flex-direction:column;gap:14px">
 
         <!-- Periodo -->
-        <div style="margin-bottom:16px">
-          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px">
-            📆 Periodo
-          </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;
+            margin-bottom:8px;letter-spacing:.5px">📆 Periodo</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div>
               <label style="font-size:11px;color:#555;display:block;margin-bottom:4px">Dal</label>
               <input type="date" id="cpa-dal" value="${primoMese}"
-                style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
+                style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;
+                  font-size:13px;box-sizing:border-box">
             </div>
             <div>
               <label style="font-size:11px;color:#555;display:block;margin-bottom:4px">Al</label>
               <input type="date" id="cpa-al" value="${fineAnno}"
-                style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
+                style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;
+                  font-size:13px;box-sizing:border-box">
             </div>
           </div>
         </div>
 
-        <!-- Selezione -->
-        <div style="margin-bottom:16px">
-          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px">
-            👥 Chi stampare
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
+        <!-- Chi stampare -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;
+            margin-bottom:8px;letter-spacing:.5px">👥 Chi</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
             <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;
               border:2px solid #DDD;border-radius:8px;cursor:pointer"
-              onclick="this.style.borderColor='#6A1B9A';document.querySelectorAll('.cpa-opt').forEach(e=>e.style.borderColor='#DDD');this.style.borderColor='#6A1B9A'">
-              <input type="radio" name="cpa-chi" value="pv" checked class="cpa-opt"
-                style="accent-color:#6A1B9A">
+              id="lbl-pv">
+              <input type="radio" name="cpa-chi" value="pv" checked
+                style="accent-color:#6A1B9A" onchange="_cpaSelChi(this)">
               <div>
                 <div style="font-weight:700;font-size:13px">🏪 Tutto il punto vendita</div>
-                <div style="font-size:11px;color:#888">Tutti i dipendenti in un unico report</div>
+                <div style="font-size:11px;color:#888">Un foglio per ogni dipendente</div>
               </div>
             </label>
             <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
-              border:2px solid #DDD;border-radius:8px;cursor:pointer"
-              onclick="this.style.borderColor='#6A1B9A';document.querySelectorAll('.cpa-opt').forEach(e=>e.style.borderColor='#DDD');this.style.borderColor='#6A1B9A';document.querySelector('[name=cpa-chi][value=singolo]').checked=true">
-              <input type="radio" name="cpa-chi" value="singolo" class="cpa-opt"
-                style="accent-color:#6A1B9A">
+              border:2px solid #DDD;border-radius:8px;cursor:pointer" id="lbl-sing"
+              onclick="document.querySelector('[name=cpa-chi][value=singolo]').checked=true;_cpaSelChi(document.querySelector('[name=cpa-chi][value=singolo]'))">
+              <input type="radio" name="cpa-chi" value="singolo"
+                style="accent-color:#6A1B9A" onchange="_cpaSelChi(this)">
               <div style="flex:1">
                 <div style="font-weight:700;font-size:13px">👤 Singolo dipendente</div>
               </div>
-              <select id="cpa-dip" style="padding:6px 10px;border:1px solid #DDD;border-radius:6px;
-                font-size:12px;max-width:160px"
-                onchange="document.querySelector('[name=cpa-chi][value=singolo]').checked=true">
+              <select id="cpa-dip" style="padding:6px 10px;border:1px solid #DDD;
+                border-radius:6px;font-size:12px"
+                onchange="document.querySelector('[name=cpa-chi][value=singolo]').checked=true;_cpaSelChi(document.querySelector('[name=cpa-chi][value=singolo]'))">
                 ${nm.map(n=>`<option value="${n}">${n}</option>`).join('')}
               </select>
             </div>
           </div>
         </div>
 
-        <!-- Opzioni -->
-        <div style="margin-bottom:16px;padding:10px 12px;background:#F8F8F8;border-radius:8px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px">
-            <input type="checkbox" id="cpa-vuoti" checked style="accent-color:#6A1B9A">
-            Mostra anche i giorni liberi (senza causali)
+        <!-- Flag tipi da includere -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;
+            margin-bottom:8px;letter-spacing:.5px">🏷️ Cosa includere nel report</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${[
+              ['cpa-t-ferie',    '#C8E6C9', '#1B5E20', '🏖️', 'Ferie'],
+              ['cpa-t-permesso', '#BBDEFB', '#0D47A1', '📋', 'Permessi'],
+              ['cpa-t-malattia', '#FFCDD2', '#C62828', '🤒', 'Malattia'],
+              ['cpa-t-assenza',  '#FFF9C4', '#795548', '📝', 'Assenze NR'],
+            ].map(([id,bg,c,ico,lbl])=>`
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+                background:${bg};border-radius:7px;cursor:pointer;font-size:12px;
+                font-weight:600;color:${c}">
+                <input type="checkbox" id="${id}" checked style="accent-color:${c}">
+                ${ico} ${lbl}
+              </label>`).join('')}
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;
+            margin-top:6px;background:#F5F5F5;border-radius:7px;cursor:pointer;
+            font-size:12px;color:#555">
+            <input type="checkbox" id="cpa-vuoti" style="accent-color:#6A1B9A">
+            📅 Mostra anche i giorni senza eventi (calendario completo)
           </label>
         </div>
 
         <!-- Azioni -->
-        <div style="display:flex;gap:8px">
-          <button onclick="_eseguiStampaCalendario('print')"
-            style="flex:1;padding:11px;background:#6A1B9A;color:#fff;border:none;border-radius:8px;
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:4px">
+          <button onclick="_eseguiStampaCalendario('stampa')"
+            style="padding:12px;background:#6A1B9A;color:#fff;border:none;border-radius:8px;
               font-size:13px;font-weight:700;cursor:pointer">🖨️ Stampa</button>
           <button onclick="_eseguiStampaCalendario('pdf')"
-            style="flex:1;padding:11px;background:#4A148C;color:#fff;border:none;border-radius:8px;
+            style="padding:12px;background:#4A148C;color:#fff;border:none;border-radius:8px;
               font-size:13px;font-weight:700;cursor:pointer">⬇️ Salva PDF</button>
         </div>
+
       </div>
     </div>`;
 
   document.body.appendChild(overlay);
 }
 
+function _cpaSelChi(radio){
+  document.getElementById('lbl-pv').style.borderColor   = radio.value==='pv'?'#6A1B9A':'#DDD';
+  document.getElementById('lbl-sing').style.borderColor = radio.value==='singolo'?'#6A1B9A':'#DDD';
+}
+
+
 async function _eseguiStampaCalendario(mode){
   const dal  = document.getElementById('cpa-dal')?.value;
   const al   = document.getElementById('cpa-al')?.value;
-  const chi  = document.querySelector('input[name="cpa-chi"]:checked')?.value || 'pv';
+  const chi  = document.querySelector('input[name="cpa-chi"]:checked')?.value||'pv';
   const dip  = document.getElementById('cpa-dip')?.value;
-  const mostraVuoti = document.getElementById('cpa-vuoti')?.checked ?? true;
+  const mostraVuoti = document.getElementById('cpa-vuoti')?.checked||false;
 
-  if(!dal || !al){ alert('Seleziona il periodo'); return; }
-  if(new Date(dal) > new Date(al)){ alert('La data "Al" deve essere successiva a "Dal"'); return; }
+  // Flag tipi
+  const tipiAttivi = {
+    ferie:    document.getElementById('cpa-t-ferie')?.checked!==false,
+    permesso: document.getElementById('cpa-t-permesso')?.checked!==false,
+    malattia: document.getElementById('cpa-t-malattia')?.checked!==false,
+    assenza:  document.getElementById('cpa-t-assenza')?.checked!==false,
+  };
+
+  if(!dal||!al){ alert('Seleziona il periodo'); return; }
+  if(new Date(dal)>new Date(al)){ alert('"Al" deve essere dopo "Dal"'); return; }
+
+  // Verifica almeno un tipo selezionato
+  if(!Object.values(tipiAttivi).some(Boolean)){
+    alert('Seleziona almeno un tipo da includere nel report');
+    return;
+  }
 
   document.getElementById('cal-print-overlay')?.remove();
 
-  const dalD  = new Date(dal + 'T00:00:00');
-  const alD   = new Date(al  + 'T00:00:00');
-  const html  = _buildCalPeriodo(dalD, alD, chi === 'singolo' ? dip : null, mostraVuoti);
-  const label = chi === 'singolo' ? dip : 'Punto Vendita';
-  const fname = _pdfName(['calendario', dal, al, label]);
+  const soloNome = chi==='singolo' ? dip : null;
+  const label    = soloNome || 'Punto Vendita';
+  const html     = _buildCalPeriodo(new Date(dal+'T00:00:00'), new Date(al+'T00:00:00'),
+                     soloNome, mostraVuoti, tipiAttivi);
+  const fname    = ['report_ferie', dal, al, label.replace(/\s+/g,'_')].join('_')+'.pdf';
 
-  if(mode === 'pdf'){
-    await _generaPDF(`Calendario ${label}`, html, fname);
+  if(mode==='pdf'){
+    await _generaPDF('Report ferie '+label, html, fname);
   } else {
-    _openWin(`Calendario ${label}`, _printToolbar(`${label} · ${dal} → ${al}`) + html);
+    _openWin('Report ferie '+label, _printToolbar(label+' · '+dal+' → '+al)+html);
   }
 }
 
-function _buildCalPeriodo(dalD, alD, soloNome, mostraVuoti){
-  const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-                'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function _buildCalPeriodo(dalD, alD, soloNome, mostraVuoti, tipiAttivi){
+  const MESI  = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                 'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   const GSETT = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+  const nomi  = soloNome ? [soloNome] : Object.keys(D.turni_db||{}).sort();
 
-  const nomi = soloNome ? [soloNome] : Object.keys(D.turni_db || {}).sort();
+  // Normalize tipi attivi: se non passato mostra tutto
+  const TA = tipiAttivi || {ferie:true,permesso:true,malattia:true,assenza:true};
+
+  // Mappa colori per tipo
+  const TIPO_STYLE = {
+    ferie:            {bg:'#C8E6C9', c:'#1B5E20', abbr:'F'},
+    permesso:         {bg:'#BBDEFB', c:'#0D47A1', abbr:'P'},
+    permesso_parziale:{bg:'#DCEEFB', c:'#0D47A1', abbr:'PP'},
+    malattia:         {bg:'#FFCDD2', c:'#C62828', abbr:'M'},
+    assenza:          {bg:'#FFF9C4', c:'#795548', abbr:'A'},
+  };
+
+  // Funzione che decide se un tipo è attivo
+  function tipoAttivo(tipo){
+    if(!tipo) return false;
+    if(tipo==='ferie')             return TA.ferie!==false;
+    if(tipo==='permesso'||tipo==='permesso_parziale') return TA.permesso!==false;
+    if(tipo==='malattia')          return TA.malattia!==false;
+    if(tipo==='assenza')           return TA.assenza!==false;
+    return true;
+  }
+
   let html = '';
-
-  // Itera mese per mese nel periodo
   let cursorMese = new Date(dalD.getFullYear(), dalD.getMonth(), 1);
   const alMese   = new Date(alD.getFullYear(), alD.getMonth(), 1);
 
   while(cursorMese <= alMese){
-    const anno = cursorMese.getFullYear();
-    const mese = cursorMese.getMonth();
-    const annoKey = String(anno);
-    const numGiorni = new Date(anno, mese+1, 0).getDate();
+    const anno   = cursorMese.getFullYear();
+    const mese   = cursorMese.getMonth();
+    const annoKey= String(anno);
+    const numGG  = new Date(anno, mese+1, 0).getDate();
 
-    // Giorni del mese entro il range
+    // Giorni nel range
     const giorniRange = [];
-    for(let d=1; d<=numGiorni; d++){
-      const gd = new Date(anno, mese, d);
-      if(gd >= dalD && gd <= alD) giorniRange.push(d);
+    for(let d=1; d<=numGG; d++){
+      const gd = new Date(anno,mese,d);
+      if(gd>=dalD && gd<=alD) giorniRange.push(d);
     }
     if(!giorniRange.length){ cursorMese.setMonth(cursorMese.getMonth()+1); continue; }
 
-    // Header tabella
-    let thDays = '<th style="min-width:100px;position:sticky;left:0;background:#6A1B9A;color:#fff">DIPENDENTE</th>';
+    // Header colonne
+    let thDays = `<th style="min-width:110px;position:sticky;left:0;background:#6A1B9A;
+      color:#fff;font-size:11px;z-index:1">DIPENDENTE</th>`;
     giorniRange.forEach(d=>{
-      const dow  = new Date(anno, mese, d).getDay();
-      const isWk = dow === 0 || dow === 6;
-      thDays += `<th style="text-align:center;min-width:26px;font-size:8px;padding:3px 1px;
-        background:${isWk?'#546E7A':'#6A1B9A'};color:#fff">
-        <div>${d}</div><div style="font-size:7px;opacity:.7">${GSETT[dow]}</div></th>`;
+      const dow  = new Date(anno,mese,d).getDay();
+      const isWk = dow===0||dow===6;
+      thDays += `<th style="text-align:center;min-width:24px;max-width:28px;font-size:8px;
+        padding:3px 1px;background:${isWk?'#546E7A':'#6A1B9A'};color:#fff">
+        <div style="font-weight:800">${d}</div>
+        <div style="opacity:.7">${GSETT[dow]}</div></th>`;
     });
-    thDays += '<th style="background:#6A1B9A;color:#fff;text-align:right">TOT</th>';
+    // Colonne totali per tipo
+    const colTot = [
+      ['TOT',  '#6A1B9A','#fff'],
+      ...(TA.ferie    ? [['FER','#2E7D32','#fff']] : []),
+      ...(TA.permesso ? [['PER','#0D47A1','#fff']] : []),
+      ...(TA.malattia ? [['MAL','#C62828','#fff']] : []),
+      ...(TA.assenza  ? [['ASS','#795548','#fff']] : []),
+    ];
+    colTot.forEach(([lbl,bg,c])=>{
+      thDays += `<th style="text-align:right;background:${bg};color:${c};
+        font-size:9px;white-space:nowrap;padding:2px 5px">${lbl}<br>h</th>`;
+    });
 
     let dipRows = '';
+    // Totali colonna (per mese)
+    const totMese = {tot:0,ferie:0,permesso:0,malattia:0,assenza:0};
+
     nomi.forEach(nome=>{
-      const dati = (D.ferie_annuali||{})[annoKey]?.[nome] || {};
-      let totH = 0;
+      const dati  = (D.ferie_annuali||{})[annoKey]?.[nome]||{};
       const quota = _calOreGiorno(nome);
       let hasDati = false;
+      const tot   = {tot:0,ferie:0,permesso:0,malattia:0,assenza:0};
 
-      let cells = `<td style="font-weight:700;position:sticky;left:0;background:#fff;
-        white-space:nowrap;font-size:11px">${nome}</td>`;
+      let cells = `<td style="font-weight:700;position:sticky;left:0;background:#FAFAFA;
+        white-space:nowrap;font-size:11px;padding:4px 8px;border-right:1px solid #EEE;
+        min-width:110px">${nome}</td>`;
 
       giorniRange.forEach(d=>{
-        const dow   = new Date(anno, mese, d).getDay();
+        const dow   = new Date(anno,mese,d).getDay();
         const isWk  = dow===0||dow===6;
         const mk    = annoKey+'-'+String(mese+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
         const e     = dati[mk];
 
-        if(e && e.tipo){
+        if(e && e.tipo && tipoAttivo(e.tipo)){
           hasDati = true;
           const ore = e.ore>0 ? e.ore : quota;
-          const bg  = e.tipo==='ferie'?'#C8E6C9':e.tipo==='permesso'||e.tipo==='permesso_parziale'?'#BBDEFB':e.tipo==='malattia'?'#FFCDD2':'#FFF9C4';
-          const abbr= e.tipo==='ferie'?'F':e.tipo==='permesso'||e.tipo==='permesso_parziale'?'P':e.tipo==='malattia'?'M':'A';
-          totH += ore;
-          cells += `<td style="text-align:center;background:${bg};font-size:8px;font-weight:700;padding:1px" title="${e.note||e.tipo}">
-            <div>${abbr}</div>${ore?`<div style="font-size:7px">${ore}h</div>`:''}
+          const st  = TIPO_STYLE[e.tipo]||{bg:'#F5F5F5',c:'#555',abbr:'?'};
+          // Accumula totali
+          tot.tot += ore;
+          const cat = e.tipo==='permesso'||e.tipo==='permesso_parziale'?'permesso':e.tipo;
+          if(tot[cat]!==undefined) tot[cat]+=ore;
+
+          cells += `<td style="text-align:center;background:${st.bg};color:${st.c};
+            font-size:8px;font-weight:700;padding:1px;border:1px solid rgba(0,0,0,.05)"
+            title="${e.tipo+(e.note?' — '+e.note:'')}">
+            <div>${st.abbr}</div>
+            ${ore?`<div style="font-size:7px">${ore}h</div>`:''}
           </td>`;
+        } else if(e && e.tipo && !tipoAttivo(e.tipo)){
+          // Tipo filtrato via flag — mostra grigio chiaro
+          cells += `<td style="background:#F9F9F9;border:1px solid #F0F0F0"></td>`;
         } else if(mostraVuoti){
-          cells += `<td style="text-align:center;background:${isWk?'#F5F5F5':''};color:${isWk?'#CCC':'transparent'};font-size:8px">
-            ${isWk?'·':'·'}</td>`;
+          cells += `<td style="text-align:center;background:${isWk?'#F5F5F5':''};
+            color:${isWk?'#DDD':'transparent'};font-size:8px;border:1px solid #F5F5F5">
+            ${isWk?'·':''}</td>`;
         } else {
-          cells += `<td style="background:${isWk?'#F5F5F5':''}"></td>`;
+          cells += `<td style="background:${isWk?'#F5F5F5':''};
+            border:1px solid #F5F5F5"></td>`;
         }
       });
 
-      cells += `<td style="text-align:right;font-weight:700;font-size:11px;background:#F3E5F5;color:#6A1B9A">
-        ${totH>0?totH+'h':''}</td>`;
+      // Celle totali
+      const fmtT = v => v>0 ? `<b>${r2(v)}</b>` : '<span style="color:#CCC">—</span>';
+      colTot.forEach(([lbl,bg,c])=>{
+        const key = lbl==='TOT'?'tot':lbl==='FER'?'ferie':lbl==='PER'?'permesso':
+                    lbl==='MAL'?'malattia':'assenza';
+        cells += `<td style="text-align:right;background:${bg}22;color:${c};
+          font-size:11px;padding:2px 6px;white-space:nowrap">${fmtT(tot[key])}</td>`;
+        if(tot[key]) totMese[key==='tot'?'tot':key] += tot[key];
+      });
 
       if(hasDati || mostraVuoti){
-        dipRows += `<tr>${cells}</tr>`;
+        dipRows += `<tr style="border-bottom:1px solid #F0F0F0">${cells}</tr>`;
       }
     });
 
-    if(!dipRows) dipRows = `<tr><td colspan="99" style="text-align:center;color:#888;padding:8px;font-size:11px">Nessuna causale registrata</td></tr>`;
+    // Riga totali mese
+    let totRow = `<td style="font-weight:800;font-size:11px;padding:4px 8px;
+      background:#6A1B9A;color:#fff;position:sticky;left:0">TOTALE MESE</td>`;
+    giorniRange.forEach(()=>{ totRow+=`<td style="background:#E8EAF6"></td>`; });
+    colTot.forEach(([lbl,bg,c])=>{
+      const key = lbl==='TOT'?'tot':lbl==='FER'?'ferie':lbl==='PER'?'permesso':
+                  lbl==='MAL'?'malattia':'assenza';
+      const v = totMese[key]||0;
+      totRow += `<td style="text-align:right;background:${bg};color:${c};
+        font-size:12px;font-weight:800;padding:3px 6px">${v>0?r2(v)+'h':'—'}</td>`;
+    });
 
-    html += `<div class="${html?'pg':''}">
-      <div class="ptitle">📅 ${MESI[mese]} ${anno}
-        <span class="psubtitle">${soloNome||'Punto Vendita'}</span>
-      </div>
-      <div style="overflow-x:auto;margin:0 8mm">
-        <table style="margin:0;width:100%">
-          <thead><tr>${thDays}</tr></thead>
-          <tbody>${dipRows}</tbody>
-        </table>
-      </div>
-      <div style="margin:4px 8mm;font-size:9px;color:#888">
-        <span style="background:#C8E6C9;padding:1px 5px;border-radius:2px;margin-right:3px">F=Ferie</span>
-        <span style="background:#BBDEFB;padding:1px 5px;border-radius:2px;margin-right:3px">P=Permesso</span>
-        <span style="background:#FFCDD2;padding:1px 5px;border-radius:2px;margin-right:3px">M=Malattia</span>
-        <span style="background:#FFF9C4;padding:1px 5px;border-radius:2px">A=Assenza NR</span>
-      </div>
-    </div>`;
+    if(!dipRows){
+      dipRows = `<tr><td colspan="999" style="text-align:center;padding:10px;
+        color:#AAA;font-size:11px">Nessuna voce per questo mese</td></tr>`;
+    }
+
+    html += `
+      <div class="${html?'pg':''}">
+        <div class="ptitle">📅 ${MESI[mese]} ${anno}
+          <span class="psubtitle">${soloNome||'Punto Vendita'}</span>
+        </div>
+        <div style="overflow-x:auto;margin:0 8mm">
+          <table style="margin:0;border-collapse:collapse;font-size:11px">
+            <thead><tr>${thDays}</tr></thead>
+            <tbody>${dipRows}</tbody>
+            <tfoot><tr style="border-top:2px solid #6A1B9A">${totRow}</tr></tfoot>
+          </table>
+        </div>
+        <div style="margin:4px 8mm;font-size:9px;color:#888;display:flex;gap:10px;flex-wrap:wrap">
+          ${Object.entries(TIPO_STYLE).filter(([t])=>tipoAttivo(t)).map(([t,st])=>
+            `<span style="background:${st.bg};color:${st.c};padding:1px 7px;
+              border-radius:3px;font-weight:700">${st.abbr}=${t}</span>`
+          ).join('')}
+        </div>
+      </div>`;
 
     cursorMese.setMonth(cursorMese.getMonth()+1);
   }
 
-  return html || '<div style="padding:20px;text-align:center;color:#888">Nessun dato nel periodo selezionato</div>';
+  return html || `<div style="padding:24px;text-align:center;color:#888">
+    Nessun dato nel periodo selezionato per i tipi scelti</div>`;
 }
+
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -8438,49 +8497,69 @@ function _buildCalPeriodo(dalD, alD, soloNome, mostraVuoti){
 
 // ── Salva richiesta su Supabase ──
 async function salvaRichiestaFerie(req){
-  if(!_isCloud || !_companyId){
-    // Fallback locale: salva in D.richieste_ferie
-    if(!D.richieste_ferie) D.richieste_ferie = [];
-    req.id = 'local_' + Date.now();
-    req.created_at = new Date().toISOString();
-    D.richieste_ferie.push(req);
-    setMod();
-    return req;
+  // Salva sempre in locale (D.richieste_ferie)
+  if(!D.richieste_ferie) D.richieste_ferie = [];
+  const localReq = {...req, id:'loc_'+Date.now(), created_at:new Date().toISOString()};
+  D.richieste_ferie.push(localReq);
+  setMod();
+
+  // Se cloud disponibile, salva anche su Supabase
+  if(_isCloud && _companyId && _sb){
+    try{
+      const {data, error} = await _sb.from('richieste_ferie').insert({
+        company_id: _companyId,
+        dipendente: req.dipendente,
+        tipo:       req.tipo,
+        data_dal:   req.data_dal,
+        data_al:    req.data_al,
+        ore:        req.ore||null,
+        note:       req.note||'',
+        stato:      'richiesto',
+      }).select().single();
+      if(!error && data){
+        // Aggiorna id locale con quello Supabase
+        localReq.id = data.id;
+        localReq._supabase = true;
+        return data;
+      }
+      if(error) console.warn('[salvaRichiestaFerie] Supabase:', error.message);
+    }catch(e){ console.warn('[salvaRichiestaFerie] Cloud error:', e.message); }
   }
-  const { data, error } = await _sb.from('richieste_ferie').insert({
-    company_id:  _companyId,
-    dipendente:  req.dipendente,
-    tipo:        req.tipo,
-    data_dal:    req.data_dal,
-    data_al:     req.data_al,
-    ore:         req.ore || null,
-    note:        req.note || '',
-    stato:       'richiesto',
-  }).select().single();
-  if(error){ console.error('salvaRichiestaFerie:', error); return null; }
-  return data;
+  return localReq;
 }
+
 
 // ── Carica richieste da Supabase ──
 async function caricaRichiesteFerie(filtri){
-  if(!_isCloud || !_companyId){
-    return (D.richieste_ferie || []).filter(r => {
-      if(filtri?.dipendente && r.dipendente !== filtri.dipendente) return false;
+  let lista = [];
+
+  // Cloud
+  if(_isCloud && _companyId && _sb){
+    try{
+      let q = _sb.from('richieste_ferie').select('*')
+        .eq('company_id',_companyId).order('data_dal',{ascending:false});
+      if(filtri?.dipendente) q = q.eq('dipendente', filtri.dipendente);
+      if(filtri?.dal)        q = q.gte('data_al', filtri.dal);
+      if(filtri?.al)         q = q.lte('data_dal', filtri.al);
+      if(filtri?.stato)      q = q.eq('stato', filtri.stato);
+      const {data,error} = await q;
+      if(!error && data) lista = data;
+    }catch(e){ console.warn('[caricaRichiesteFerie] Cloud:', e.message); }
+  }
+
+  // Fallback/integrazione locale
+  if(!lista.length){
+    lista = (D.richieste_ferie||[]).filter(r=>{
+      if(filtri?.dipendente && r.dipendente!==filtri.dipendente) return false;
       if(filtri?.dal && r.data_al < filtri.dal) return false;
       if(filtri?.al  && r.data_dal > filtri.al) return false;
+      if(filtri?.stato && r.stato!==filtri.stato) return false;
       return true;
-    });
+    }).sort((a,b)=>b.data_dal?.localeCompare(a.data_dal));
   }
-  let q = _sb.from('richieste_ferie').select('*').eq('company_id', _companyId)
-    .order('data_dal', {ascending: false});
-  if(filtri?.dipendente) q = q.eq('dipendente', filtri.dipendente);
-  if(filtri?.dal)        q = q.gte('data_al',   filtri.dal);
-  if(filtri?.al)         q = q.lte('data_dal',  filtri.al);
-  if(filtri?.stato)      q = q.eq('stato',       filtri.stato);
-  const { data, error } = await q;
-  if(error){ console.error('caricaRichiesteFerie:', error); return []; }
-  return data || [];
+  return lista;
 }
+
 
 // ── Aggiorna stato richiesta ──
 async function aggiornaStatoRichiesta(id, stato, approvatoDa){
@@ -8500,168 +8579,153 @@ async function aggiornaStatoRichiesta(id, stato, approvatoDa){
 // ── Genera PDF documento richiesta ──
 async function generaDocumentoRichiesta(req, modalita){
   const TIPO_LABEL = {
-    ferie:            'Ferie',
-    permesso:         'Permesso',
-    permesso_parziale:'Permesso parziale',
-    assenza:          'Assenza',
+    ferie:'Ferie', permesso:'Permesso',
+    permesso_parziale:'Permesso parziale', assenza:'Assenza', malattia:'Malattia'
   };
-  const pvNome = D.nome_pv || document.getElementById('user-email-lbl')?.textContent || 'Punto Vendita';
-  const oggi   = new Date().toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
-  const fmtD   = d => new Date(d+'T00:00:00').toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
-  const tipo   = TIPO_LABEL[req.tipo] || req.tipo;
-  const periodo = req.data_dal === req.data_al
+  const pvNome = D.nome_pv || 'Punto Vendita';
+  const oggi   = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+  const fmtD   = d => new Date(d+'T00:00:00').toLocaleDateString('it-IT',
+    {weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const tipo    = TIPO_LABEL[req.tipo]||req.tipo;
+  const periodo = req.data_dal===req.data_al
     ? fmtD(req.data_dal)
-    : `dal ${fmtD(req.data_dal)} al ${fmtD(req.data_al)}`;
-  const db = D.turni_db[req.dipendente] || {};
-  const nomeCognome = (db.cognome || '') + ' ' + (db.nome_dip || req.dipendente);
+    : fmtD(req.data_dal)+' → '+fmtD(req.data_al);
+  const db = D.turni_db[req.dipendente]||{};
+  const nomeCognome = ((db.cognome||'')+(db.nome_dip?' '+db.nome_dip:'')||req.dipendente).trim();
 
   const html = `
-    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:20mm">
+  <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;padding:16mm 14mm">
 
-      <!-- Intestazione -->
-      <div style="border-bottom:3px solid #1565C0;padding-bottom:12px;margin-bottom:20px;
-        display:flex;justify-content:space-between;align-items:flex-end">
-        <div>
-          <div style="font-size:20px;font-weight:800;color:#1565C0">Gestione Orari PV</div>
-          <div style="font-size:13px;color:#555;margin-top:2px">${pvNome}</div>
-        </div>
-        <div style="text-align:right;font-size:11px;color:#888">
-          <div>Data richiesta: <b>${oggi}</b></div>
-          ${req.id ? `<div style="font-size:9px;color:#CCC">Rif: ${req.id}</div>` : ''}
+    <!-- Intestazione -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;
+      border-bottom:3px solid #1565C0;padding-bottom:10px;margin-bottom:18px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#1565C0">GESTIONE ORARI</div>
+        <div style="font-size:13px;color:#555;margin-top:2px">${pvNome}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:#888">
+        <div>Data: <b>${oggi}</b></div>
+        ${req.id?`<div style="font-size:9px;margin-top:2px;color:#CCC">Rif. ${req.id}</div>`:''}
+      </div>
+    </div>
+
+    <!-- Titolo -->
+    <div style="background:#E3F2FD;border-left:5px solid #1565C0;padding:10px 14px;
+      margin-bottom:20px;border-radius:0 6px 6px 0">
+      <div style="font-size:17px;font-weight:800;color:#1565C0;letter-spacing:.5px">
+        RICHIESTA DI ${tipo.toUpperCase()}
+      </div>
+    </div>
+
+    <!-- Dati -->
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;font-size:13px">
+      ${[
+        ['Dipendente', `<b>${nomeCognome}</b>`],
+        ['Punto Vendita', pvNome],
+        ['Tipo richiesta', `<span style="background:#BBDEFB;color:#1565C0;padding:2px 10px;
+          border-radius:10px;font-weight:700">${tipo}</span>`],
+        ['Periodo', `<b>${periodo}</b>`],
+        req.ore ? ['Ore richieste', `<b>${req.ore}h</b>`] : null,
+        ['Note / Motivazione', req.note||'<span style="color:#AAA">—</span>'],
+        ['Stato', `<span style="background:${
+          req.stato==='approvato'?'#C8E6C9':req.stato==='rifiutato'?'#FFCDD2':'#FFF9C4'};
+          color:${req.stato==='approvato'?'#1B5E20':req.stato==='rifiutato'?'#C62828':'#795548'};
+          padding:2px 10px;border-radius:10px;font-weight:700;text-transform:capitalize">
+          ${req.stato||'Richiesto'}</span>`],
+      ].filter(Boolean).map(([k,v])=>`
+        <tr>
+          <td style="padding:9px 12px;background:#F5F5F5;font-weight:700;width:38%;
+            border:1px solid #E0E0E0;color:#444">${k}</td>
+          <td style="padding:9px 12px;border:1px solid #E0E0E0">${v}</td>
+        </tr>`).join('')}
+    </table>
+
+    <!-- Firme -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-top:40px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:50px;
+          text-transform:uppercase;letter-spacing:.5px">Firma del Dipendente</div>
+        <div style="border-top:1.5px solid #333;padding-top:6px">
+          <div style="font-size:11px;color:#888">${nomeCognome}</div>
+          <div style="font-size:10px;color:#CCC;margin-top:4px">Data: _______________</div>
         </div>
       </div>
-
-      <!-- Titolo -->
-      <div style="background:#E3F2FD;border-left:4px solid #1565C0;padding:12px 16px;
-        margin-bottom:24px;border-radius:0 6px 6px 0">
-        <div style="font-size:16px;font-weight:700;color:#1565C0">
-          RICHIESTA DI ${tipo.toUpperCase()}
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:50px;
+          text-transform:uppercase;letter-spacing:.5px">Firma Store Manager</div>
+        <div style="border-top:1.5px solid #333;padding-top:6px">
+          <div style="font-size:11px;color:#888">${req.approvato_da||''}</div>
+          <div style="font-size:10px;color:#CCC;margin-top:4px">Data: _______________</div>
         </div>
       </div>
+    </div>
 
-      <!-- Dati dipendente -->
-      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            width:35%;border:1px solid #E0E0E0">Dipendente</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${nomeCognome.trim()}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Punto Vendita</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${pvNome}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Tipo richiesta</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">
-            <span style="background:#E3F2FD;color:#1565C0;padding:2px 10px;
-              border-radius:10px;font-weight:700">${tipo}</span>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Periodo</td>
-          <td style="padding:8px 12px;font-size:13px;font-weight:700;border:1px solid #E0E0E0">
-            ${periodo}
-          </td>
-        </tr>
-        ${req.ore ? `<tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Ore richieste</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${req.ore}h</td>
-        </tr>` : ''}
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Note / Motivazione</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0;
-            min-height:40px">${req.note || '—'}</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
-            border:1px solid #E0E0E0">Stato</td>
-          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">
-            <span style="background:${req.stato==='approvato'?'#C8E6C9':req.stato==='rifiutato'?'#FFCDD2':'#FFF9C4'};
-              color:${req.stato==='approvato'?'#1B5E20':req.stato==='rifiutato'?'#C62828':'#795548'};
-              padding:2px 10px;border-radius:10px;font-weight:700;text-transform:capitalize">
-              ${req.stato || 'Richiesto'}
-            </span>
-          </td>
-        </tr>
-      </table>
+    <!-- Timbro / note approvazione -->
+    ${req.stato==='approvato'?`
+    <div style="margin-top:24px;border:2px dashed #2E7D32;border-radius:8px;padding:10px 14px;
+      background:#F1F8E9">
+      <div style="font-size:11px;font-weight:700;color:#2E7D32">✅ APPROVATA</div>
+      ${req.approvato_da?`<div style="font-size:11px;color:#555;margin-top:2px">da: ${req.approvato_da}</div>`:''}
+    </div>`:''}
 
-      <!-- Spazio firme -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:40px">
-            FIRMA DIPENDENTE
-          </div>
-          <div style="border-top:1px solid #333;padding-top:6px;font-size:10px;color:#888">
-            ${nomeCognome.trim()}
-          </div>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:40px">
-            FIRMA STORE MANAGER
-          </div>
-          <div style="border-top:1px solid #333;padding-top:6px;font-size:10px;color:#888">
-            ${req.approvato_da || ''}
-          </div>
-        </div>
-      </div>
+    <div style="margin-top:28px;padding-top:10px;border-top:1px solid #EEE;
+      font-size:9px;color:#CCC;text-align:center">
+      Documento generato il ${oggi} · Gestione Orari PV
+    </div>
+  </div>`;
 
-      <div style="margin-top:30px;padding-top:12px;border-top:1px solid #EEE;
-        font-size:9px;color:#AAA;text-align:center">
-        Documento generato il ${oggi} · Gestione Orari PV
-      </div>
-    </div>`;
+  const fname = ['richiesta', req.tipo, req.dipendente.replace(/\s+/g,'_'), req.data_dal]
+    .join('_').replace(/[^a-zA-Z0-9_\-]/g,'_') + '.pdf';
 
-  const fname = _pdfName(['richiesta', req.tipo, req.dipendente, req.data_dal]);
-
-  if(modalita === 'pdf'){
-    await _generaPDF(`Richiesta ${tipo} — ${nomeCognome.trim()}`, html, fname);
-  } else if(modalita === 'stampa'){
-    _openWin(`Richiesta ${tipo}`, _printToolbar('A4 Verticale') + html);
+  if(modalita==='pdf'){
+    await _generaPDF('Richiesta '+tipo+' — '+nomeCognome, html, fname);
+  } else {
+    _openWin('Richiesta '+tipo, _printToolbar(nomeCognome+' · '+periodo)+html);
   }
   return html;
 }
 
+
 // ── Modal nuova richiesta ferie ──
 function apriNuovaRichiesta(dipendente, dal, al, tipoPrecomp, notePrecomp){
-  const existing = document.getElementById('rif-overlay');
-  if(existing) existing.remove();
-
-  const nm   = Object.keys(D.turni_db || {}).sort();
+  document.getElementById('rif-overlay')?.remove();
+  const nm   = Object.keys(D.turni_db||{}).sort();
   const oggi = new Date().toISOString().split('T')[0];
-  const tp   = tipoPrecomp || 'ferie';
+  const tp   = tipoPrecomp||'ferie';
 
   const overlay = document.createElement('div');
   overlay.id = 'rif-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.55);'
     +'display:flex;align-items:center;justify-content:center;font-family:inherit';
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-      width:500px;max-width:95vw;overflow:hidden">
-      <div style="background:#2E7D32;color:#fff;padding:14px 18px;display:flex;align-items:center">
-        <span style="font-size:15px;font-weight:700">📋 Richiesta ${tp==='ferie'?'ferie':tp==='permesso'?'permesso':'assenza'}</span>
+      width:500px;max-width:95vw;max-height:90vh;overflow-y:auto">
+      <div style="background:#2E7D32;color:#fff;padding:14px 18px;display:flex;align-items:center;
+        position:sticky;top:0;z-index:1">
+        <span style="font-size:15px;font-weight:700">📋 Nuova richiesta</span>
         <div style="flex:1"></div>
         <button onclick="document.getElementById('rif-overlay').remove()"
           style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
-            padding:3px 9px;cursor:pointer;font-size:14px">✕</button>
+            padding:3px 10px;cursor:pointer;font-size:15px">✕</button>
       </div>
       <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
-            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Dipendente *</label>
-            <select id="rif-dip" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+              Dipendente *</label>
+            <select id="rif-dip" style="width:100%;padding:8px;border:1px solid #DDD;
+              border-radius:6px;font-size:13px;box-sizing:border-box">
               ${nm.map(n=>`<option value="${n}" ${n===dipendente?'selected':''}>${n}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Tipo *</label>
-            <select id="rif-tipo" style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+              Tipo *</label>
+            <select id="rif-tipo" style="width:100%;padding:8px;border:1px solid #DDD;
+              border-radius:6px;font-size:13px;box-sizing:border-box">
               <option value="ferie" ${tp==='ferie'?'selected':''}>🏖️ Ferie</option>
               <option value="permesso" ${tp==='permesso'?'selected':''}>📋 Permesso</option>
               <option value="permesso_parziale" ${tp==='permesso_parziale'?'selected':''}>📋 Permesso parziale</option>
@@ -8670,6 +8734,7 @@ function apriNuovaRichiesta(dipendente, dal, al, tipoPrecomp, notePrecomp){
             </select>
           </div>
         </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
             <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Dal *</label>
@@ -8682,42 +8747,47 @@ function apriNuovaRichiesta(dipendente, dal, al, tipoPrecomp, notePrecomp){
               style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
           </div>
         </div>
+
         <div id="rif-ore-row" style="${tp==='permesso_parziale'?'':'display:none'}">
           <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Ore</label>
           <input type="number" id="rif-ore" min="0.5" max="8" step="0.5" value="4"
             style="width:80px;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
         </div>
+
         <div>
-          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Note / Motivazione</label>
-          <textarea id="rif-note" rows="3"
-            style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box;resize:vertical"
-            >${notePrecomp||''}</textarea>
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+            Note / Motivazione</label>
+          <textarea id="rif-note" rows="3" placeholder="es. Motivi personali, visita medica..."
+            style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;
+              box-sizing:border-box;resize:vertical">${notePrecomp||''}</textarea>
         </div>
+
         <div style="background:#E8F5E9;border-radius:8px;padding:10px 12px;font-size:11px;color:#2E7D32">
-          📄 Il documento verrà generato con spazio per la firma del dipendente e dello Store Manager
+          📄 Il documento include spazio per <b>firma dipendente</b> e <b>firma Store Manager</b> —
+          stampabile o esportabile in PDF
         </div>
-        <div style="display:flex;gap:8px">
-          <button onclick="_salvaRichiesta()"
-            style="flex:1;padding:11px;background:#2E7D32;color:#fff;border:none;border-radius:8px;
+
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px">
+          <button onclick="_salvaRichiesta('solo')"
+            style="padding:11px;background:#2E7D32;color:#fff;border:none;border-radius:8px;
               font-size:13px;font-weight:700;cursor:pointer">✅ Salva</button>
           <button onclick="_salvaRichiesta('pdf')"
-            style="padding:11px 16px;background:#1565C0;color:#fff;border:none;border-radius:8px;
-              font-size:13px;font-weight:700;cursor:pointer" title="Salva e genera PDF">⬇️ PDF</button>
+            style="padding:11px 14px;background:#1565C0;color:#fff;border:none;border-radius:8px;
+              font-size:13px;font-weight:700;cursor:pointer" title="Salva e scarica PDF">⬇️ PDF</button>
           <button onclick="_salvaRichiesta('stampa')"
-            style="padding:11px 16px;background:#37474F;color:#fff;border:none;border-radius:8px;
+            style="padding:11px 14px;background:#37474F;color:#fff;border:none;border-radius:8px;
               font-size:13px;font-weight:700;cursor:pointer" title="Salva e stampa">🖨️</button>
           <button onclick="document.getElementById('rif-overlay').remove()"
-            style="padding:11px 14px;background:#fff;border:1px solid #DDD;border-radius:8px;
-              font-size:12px;cursor:pointer">Annulla</button>
+            style="padding:11px 12px;background:#fff;border:1px solid #DDD;border-radius:8px;
+              font-size:12px;cursor:pointer">✕</button>
         </div>
       </div>
     </div>`;
 
-  overlay.querySelector('#rif-tipo').addEventListener('change', function(){
+  overlay.querySelector('#rif-tipo').addEventListener('change',function(){
     document.getElementById('rif-ore-row').style.display =
-      this.value === 'permesso_parziale' ? 'block' : 'none';
+      this.value==='permesso_parziale'?'block':'none';
   });
-
   document.body.appendChild(overlay);
 }
 
@@ -8731,92 +8801,246 @@ async function _salvaRichiesta(modalita){
   const note = document.getElementById('rif-note')?.value?.trim()||'';
 
   if(!dip||!tipo||!dal||!al){ alert('Compila tutti i campi obbligatori'); return; }
-  if(new Date(dal) > new Date(al)){ alert('"Al" deve essere uguale o successiva a "Dal"'); return; }
+  if(new Date(dal)>new Date(al)){ alert('"Al" deve essere uguale o dopo "Dal"'); return; }
 
   const req = {
-    dipendente: dip, tipo, data_dal: dal, data_al: al,
-    ore: tipo==='permesso_parziale' ? (ore||4) : null,
-    note, stato: 'richiesto'
+    dipendente:dip, tipo, data_dal:dal, data_al:al,
+    ore: tipo==='permesso_parziale'?(ore||4):null,
+    note, stato:'richiesto'
   };
 
   const saved = await salvaRichiestaFerie(req);
   if(!saved){ alert('Errore nel salvataggio — riprova'); return; }
-
   document.getElementById('rif-overlay')?.remove();
 
-  if(modalita === 'pdf'){
+  if(modalita==='pdf'){
     notify('⬇️ Generazione PDF...');
-    await generaDocumentoRichiesta({...req, id: saved.id}, 'pdf');
-  } else if(modalita === 'stampa'){
-    await generaDocumentoRichiesta({...req, id: saved.id}, 'stampa');
+    await generaDocumentoRichiesta({...req,id:saved.id},'pdf');
+  } else if(modalita==='stampa'){
+    await generaDocumentoRichiesta({...req,id:saved.id},'stampa');
   } else {
-    notify('✅ Richiesta salvata per ' + dip);
+    notify('✅ Richiesta salvata per '+dip);
   }
 }
 
 
 // ── Archivio richieste ──
-async function apriArchivioRichieste(){
-  const existing = document.getElementById('arch-overlay');
-  if(existing){ existing.remove(); return; }
-
-  const nm = ['Tutti', ...Object.keys(D.turni_db||{}).sort()];
+function apriArchivioRichieste(){
+  document.getElementById('arch-overlay')?.remove();
+  const nm   = ['', ...Object.keys(D.turni_db||{}).sort()];
+  const oggi = new Date();
+  const dal6 = new Date(oggi.getFullYear(), oggi.getMonth()-5, 1).toISOString().split('T')[0];
+  const fine = oggi.toISOString().split('T')[0];
 
   const overlay = document.createElement('div');
   overlay.id = 'arch-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.5);'
     +'display:flex;align-items:center;justify-content:center;font-family:inherit';
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
-
-  const oggi   = new Date();
-  const dal6   = new Date(oggi.getFullYear(), oggi.getMonth()-5, 1).toISOString().split('T')[0];
-  const fine   = oggi.toISOString().split('T')[0];
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
 
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
-      width:780px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
-      <div style="background:#37474F;color:#fff;padding:14px 18px;display:flex;align-items:center">
-        <span style="font-size:15px;font-weight:700">📋 Archivio richieste ferie e permessi</span>
+      width:820px;max-width:97vw;max-height:93vh;display:flex;flex-direction:column;overflow:hidden">
+
+      <div style="background:#37474F;color:#fff;padding:12px 18px;display:flex;
+        align-items:center;gap:10px;position:sticky;top:0;z-index:2">
+        <span style="font-size:15px;font-weight:700">📋 Archivio richieste</span>
         <div style="flex:1"></div>
-        <button onclick="apriNuovaRichiesta()" style="background:rgba(255,255,255,.2);border:none;
-          color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;margin-right:8px">
-          + Nuova richiesta</button>
+        <button onclick="apriNuovaRichiesta()"
+          style="background:#2E7D32;border:none;color:#fff;border-radius:6px;
+            padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">+ Nuova</button>
         <button onclick="document.getElementById('arch-overlay').remove()"
-          style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
-            padding:3px 9px;cursor:pointer">✕</button>
+          style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:5px;
+            padding:4px 10px;cursor:pointer;font-size:16px;margin-left:4px">✕</button>
       </div>
 
-      <!-- Filtri -->
-      <div style="padding:10px 14px;border-bottom:1px solid #EEE;display:flex;gap:8px;flex-wrap:wrap;
-        align-items:center;background:#F9FAFB">
-        <select id="arch-dip" style="padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:12px">
-          ${nm.map(n=>`<option value="${n==='Tutti'?'':n}">${n}</option>`).join('')}
+      <!-- Filtri riga 1: ricerca testo + dipendente -->
+      <div style="padding:8px 14px 4px;border-bottom:0;background:#F5F7FA;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="arch-cerca" placeholder="🔍 Cerca per nome, note, tipo..."
+          oninput="_archCarica()"
+          style="flex:1;min-width:180px;padding:7px 11px;border:1px solid #DDD;
+            border-radius:6px;font-size:12px;outline:none">
+        <select id="arch-dip" style="padding:7px 10px;border:1px solid #DDD;
+          border-radius:6px;font-size:12px" onchange="_archCarica()">
+          ${nm.map(n=>`<option value="${n}">${n||'— Tutti i dipendenti —'}</option>`).join('')}
+        </select>
+      </div>
+
+      <!-- Filtri riga 2: tipo + periodo + stato -->
+      <div style="padding:4px 14px 8px;border-bottom:1px solid #EEE;background:#F5F7FA;
+        display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="arch-tipo" style="padding:7px 10px;border:1px solid #DDD;
+          border-radius:6px;font-size:12px" onchange="_archCarica()">
+          <option value="">Tutti i tipi</option>
+          <option value="ferie">🏖️ Ferie</option>
+          <option value="permesso">📋 Permesso</option>
+          <option value="permesso_parziale">📋 Permesso parziale</option>
+          <option value="assenza">📝 Assenza</option>
+          <option value="malattia">🤒 Malattia</option>
         </select>
         <input type="date" id="arch-dal" value="${dal6}"
-          style="padding:6px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+          style="padding:7px;border:1px solid #DDD;border-radius:6px;font-size:12px"
+          onchange="_archCarica()">
+        <span style="color:#999;font-size:12px">→</span>
         <input type="date" id="arch-al" value="${fine}"
-          style="padding:6px;border:1px solid #DDD;border-radius:6px;font-size:12px">
-        <select id="arch-stato" style="padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+          style="padding:7px;border:1px solid #DDD;border-radius:6px;font-size:12px"
+          onchange="_archCarica()">
+        <select id="arch-stato" style="padding:7px 10px;border:1px solid #DDD;
+          border-radius:6px;font-size:12px" onchange="_archCarica()">
           <option value="">Tutti gli stati</option>
-          <option value="richiesto">Richiesto</option>
-          <option value="approvato">Approvato</option>
-          <option value="rifiutato">Rifiutato</option>
-          <option value="archiviato">Archiviato</option>
+          <option value="richiesto">In attesa</option>
+          <option value="approvato">✅ Approvato</option>
+          <option value="rifiutato">✗ Rifiutato</option>
         </select>
-        <button onclick="_archCarica()"
-          style="padding:6px 14px;background:#37474F;color:#fff;border:none;border-radius:6px;
-            font-size:12px;cursor:pointer;font-weight:600">🔍 Cerca</button>
+        <button onclick="document.getElementById('arch-cerca').value='';_archCarica()"
+          style="padding:6px 12px;background:#fff;border:1px solid #DDD;border-radius:6px;
+            font-size:11px;color:#888;cursor:pointer">✕ Reset</button>
       </div>
 
-      <!-- Lista -->
-      <div id="arch-body" style="overflow-y:auto;flex:1;padding:12px 14px">
-        <div style="text-align:center;color:#888;padding:32px">⏳ Caricamento...</div>
+      <div id="arch-body" style="overflow-y:auto;flex:1;padding:10px 14px">
+        <div style="text-align:center;color:#888;padding:30px">⏳ Caricamento...</div>
+      </div>
+
+      <div style="padding:8px 14px;border-top:1px solid #EEE;background:#FAFAFA;
+        display:flex;justify-content:space-between;align-items:center">
+        <span id="arch-footer" style="font-size:11px;color:#888">—</span>
+        <button onclick="_archEsportaTutte()"
+          style="padding:5px 12px;background:#37474F;color:#fff;border:none;border-radius:5px;
+            font-size:11px;cursor:pointer" title="Esporta lista visibile in PDF">⬇️ Esporta lista</button>
       </div>
     </div>`;
 
   document.body.appendChild(overlay);
-  await _archCarica();
+  _archCarica();
 }
+
+
+async function _archCarica(){
+  const cerca = (document.getElementById('arch-cerca')?.value||'').toLowerCase().trim();
+  const dip   = document.getElementById('arch-dip')?.value||'';
+  const tipo  = document.getElementById('arch-tipo')?.value||'';
+  const dal   = document.getElementById('arch-dal')?.value;
+  const al    = document.getElementById('arch-al')?.value;
+  const stato = document.getElementById('arch-stato')?.value||'';
+  const body  = document.getElementById('arch-body');
+  const footer= document.getElementById('arch-footer');
+  if(!body) return;
+
+  body.innerHTML='<div style="text-align:center;padding:20px;color:#888">⏳</div>';
+
+  // Carica da cloud o locale
+  let list = await caricaRichiesteFerie({
+    dipendente: dip||null,
+    dal, al,
+    stato: stato||null,
+  });
+
+  // Filtro tipo (lato client — più semplice)
+  if(tipo) list = list.filter(r=>r.tipo===tipo||
+    (tipo==='permesso'&&r.tipo==='permesso_parziale'));
+
+  // Ricerca testo libero
+  if(cerca){
+    list = list.filter(r=>{
+      const s = [r.dipendente,r.tipo,r.note,r.data_dal,r.data_al,r.stato,r.approvato_da]
+        .join(' ').toLowerCase();
+      return cerca.split(' ').every(w=>s.includes(w));
+    });
+  }
+
+  if(footer) footer.textContent = list.length+' richieste'+
+    (cerca||dip||tipo||stato?' (filtrate)':'');
+
+  if(!list.length){
+    body.innerHTML='<div style="text-align:center;padding:40px">'
+      +'<div style="font-size:32px;margin-bottom:10px">📭</div>'
+      +'<div style="color:#888;font-size:13px">Nessuna richiesta trovata</div>'
+      +(cerca?`<div style="font-size:11px;color:#AAA;margin-top:6px">Cerca: "${cerca}"</div>`:'')
+      +'</div>';
+    return;
+  }
+
+  // Salva lista corrente per esportazione
+  window._archListaCorrente = list;
+
+  const TIPO_BG  = {ferie:'#C8E6C9',permesso:'#BBDEFB',permesso_parziale:'#DCEEFB',
+                    assenza:'#FFF9C4',malattia:'#FFCDD2'};
+  const STATO_ST = {
+    richiesto: {bg:'#FFF9C4',c:'#795548',lbl:'In attesa'},
+    approvato: {bg:'#C8E6C9',c:'#1B5E20',lbl:'✅ Approvato'},
+    rifiutato: {bg:'#FFCDD2',c:'#C62828',lbl:'✗ Rifiutato'},
+  };
+
+  // Highlight testo cercato
+  const hl = (testo)=>{
+    if(!cerca||!testo) return testo||'';
+    return cerca.split(' ').reduce((t,w)=>w?
+      t.replace(new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),
+        '<mark style="background:#FFF176;border-radius:2px">$1</mark>'):t, testo);
+  };
+
+  body.innerHTML = list.map(r=>{
+    const fmtD = d => new Date(d+'T00:00:00').toLocaleDateString('it-IT',
+      {day:'2-digit',month:'short',year:'numeric'});
+    const sc   = STATO_ST[r.stato]||STATO_ST.richiesto;
+    const rid  = encodeURIComponent(JSON.stringify(r));
+    const same = r.data_dal===r.data_al;
+    const TLBL = {ferie:'Ferie',permesso:'Permesso',permesso_parziale:'Perm. parziale',
+                  assenza:'Assenza',malattia:'Malattia'};
+    return `
+    <div style="border:1px solid #E8E8E8;border-radius:8px;padding:10px 12px;
+      margin-bottom:6px;display:flex;align-items:center;gap:10px;background:#fff;
+      transition:background .15s" onmouseover="this.style.background='#F9FAFB'"
+      onmouseout="this.style.background='#fff'">
+      <div style="background:${TIPO_BG[r.tipo]||'#F5F5F5'};border-radius:6px;
+        padding:4px 9px;font-size:10px;font-weight:700;white-space:nowrap;
+        min-width:72px;text-align:center">${TLBL[r.tipo]||r.tipo}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px">${hl(r.dipendente)}</div>
+        <div style="font-size:11px;color:#555">
+          ${same?fmtD(r.data_dal):fmtD(r.data_dal)+' → '+fmtD(r.data_al)}
+          ${r.ore?` · <b>${r.ore}h</b>`:''}
+        </div>
+        ${r.note?`<div style="font-size:10px;color:#888;font-style:italic;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px">
+          "${hl(r.note)}"</div>`:''}
+      </div>
+      <span style="background:${sc.bg};color:${sc.c};border-radius:10px;padding:2px 9px;
+        font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0">${sc.lbl}</span>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button onclick='generaDocumentoRichiesta(JSON.parse(decodeURIComponent("${rid}")),"pdf")'
+          style="background:#1565C0;color:#fff;border:none;border-radius:4px;
+            padding:4px 9px;font-size:10px;cursor:pointer;font-weight:600"
+          title="Scarica PDF">⬇️ PDF</button>
+        <button onclick='generaDocumentoRichiesta(JSON.parse(decodeURIComponent("${rid}")),"stampa")'
+          style="background:#37474F;color:#fff;border:none;border-radius:4px;
+            padding:4px 9px;font-size:10px;cursor:pointer"
+          title="Stampa documento">🖨️</button>
+        ${r.stato==='richiesto'?`
+        <button onclick="_archApprova('${r.id}')"
+          style="background:#2E7D32;color:#fff;border:none;border-radius:4px;
+            padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700"
+          title="Approva">✓</button>
+        <button onclick="_archRifiuta('${r.id}')"
+          style="background:#C62828;color:#fff;border:none;border-radius:4px;
+            padding:4px 8px;font-size:11px;cursor:pointer;font-weight:700"
+          title="Rifiuta">✗</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+async function _archApprova(id){
+  const manager = D.nome_manager||'Store Manager';
+  await aggiornaStatoRichiesta(id,'approvato',manager);
+  notify('✅ Approvata'); _archCarica();
+}
+async function _archRifiuta(id){
+  await aggiornaStatoRichiesta(id,'rifiutato',null);
+  notify('✗ Rifiutata'); _archCarica();
+}
+
 
 async function _archCarica(){
   const dip   = document.getElementById('arch-dip')?.value || '';
@@ -8888,6 +9112,56 @@ async function _archRifiuta(id){
   await _archCarica();
 }
 
+
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape')return;
+  const ids=['apri-menu-overlay','salva-menu-overlay','account-menu-overlay',
+    'rif-overlay','arch-overlay','cal-print-overlay','ob-overlay'];
+  for(const id of ids){const el=document.getElementById(id);if(el){el.remove();return;}}
+  const sub=document.getElementById('subscription-screen');
+  if(sub&&sub.style.display!=='none'){sub.style.display='none';return;}
+  const m=document.querySelector('.mbg.open');
+  if(m)m.classList.remove('open');
+});
+
+
+async function _archEsportaTutte(){
+  const list = window._archListaCorrente||[];
+  if(!list.length){ notify('Nessuna richiesta da esportare'); return; }
+  const TLBL={ferie:'Ferie',permesso:'Permesso',permesso_parziale:'Perm. parziale',
+               assenza:'Assenza',malattia:'Malattia'};
+  const fmtD = d=>new Date(d+'T00:00:00').toLocaleDateString('it-IT',
+    {day:'2-digit',month:'2-digit',year:'numeric'});
+  const oggi = new Date().toLocaleDateString('it-IT');
+  const righe = list.map(r=>`
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${r.dipendente}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${TLBL[r.tipo]||r.tipo}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${fmtD(r.data_dal)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${fmtD(r.data_al)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${r.ore||'—'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${r.note||''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #EEE">${r.stato}</td>
+    </tr>`).join('');
+  const html=`<div style="font-family:Arial,sans-serif;padding:12mm">
+    <div style="font-size:16px;font-weight:800;color:#1565C0;margin-bottom:4px">
+      📋 Lista richieste — ${D.nome_pv||'PV'}</div>
+    <div style="font-size:11px;color:#888;margin-bottom:14px">Esportato il ${oggi} · ${list.length} richieste</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#37474F;color:#fff">
+        <th style="padding:7px 8px;text-align:left">Dipendente</th>
+        <th style="padding:7px 8px;text-align:left">Tipo</th>
+        <th style="padding:7px 8px;text-align:left">Dal</th>
+        <th style="padding:7px 8px;text-align:left">Al</th>
+        <th style="padding:7px 8px;text-align:left">Ore</th>
+        <th style="padding:7px 8px;text-align:left">Note</th>
+        <th style="padding:7px 8px;text-align:left">Stato</th>
+      </tr></thead>
+      <tbody>${righe}</tbody>
+    </table>
+  </div>`;
+  await _generaPDF('Lista richieste '+oggi, html, 'lista_richieste_'+oggi.replace(/\//g,'-')+'.pdf');
+}
 </script>
 
 
