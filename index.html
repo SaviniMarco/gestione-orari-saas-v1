@@ -217,8 +217,11 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
     </div>
   </div>
 </div>
-<div id="subscription-screen" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;font-family:Arial,sans-serif;overflow-y:auto">
-  <div style="background:#fff;border-radius:16px;padding:36px;max-width:560px;width:95vw;text-align:center;margin:20px auto">
+<div id="subscription-screen" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;font-family:Arial,sans-serif;overflow-y:auto" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;padding:36px;max-width:560px;width:95vw;text-align:center;margin:20px auto;position:relative">
+    <button onclick="document.getElementById('subscription-screen').style.display='none'"
+      style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;
+        cursor:pointer;color:#AAA;line-height:1" title="Chiudi">✕</button>
     <div style="font-size:44px;margin-bottom:12px">⏰</div>
     <div style="font-size:22px;font-weight:700;margin-bottom:8px;color:#1565C0">Prova gratuita terminata</div>
     <div style="font-size:13px;color:#666;margin-bottom:28px;line-height:1.7">
@@ -228,30 +231,45 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
 
     <!-- Piani -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px" id="plans-grid">
-      <div onclick="avviaCheckout('mensile')" style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;transition:all .2s" onmouseover="this.style.borderColor='#1565C0';this.style.background='#F3F8FF'" onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+      <!-- MENSILE -->
+      <div onclick="avviaCheckout('mensile')"
+        style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;transition:all .2s"
+        onmouseover="this.style.borderColor='#1565C0';this.style.background='#F3F8FF'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
         <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">MENSILE</div>
-        <div style="font-size:26px;font-weight:800;color:#1565C0">€39</div>
+        <div style="font-size:26px;font-weight:800;color:#1565C0">€9,90</div>
         <div style="font-size:11px;color:#888">/mese</div>
       </div>
-      <div onclick="avviaCheckout('trimest')" style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative" onmouseover="this.style.borderColor='#2E7D32';this.style.background='#F1F8F1'" onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
-        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2E7D32;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 10%</div>
+      <!-- 3 MESI -->
+      <div onclick="avviaCheckout('trimest')"
+        style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative"
+        onmouseover="this.style.borderColor='#2E7D32';this.style.background='#F1F8F1'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2E7D32;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 16%</div>
         <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">3 MESI</div>
-        <div style="font-size:26px;font-weight:800;color:#2E7D32">€105</div>
-        <div style="font-size:11px;color:#888">35€/mese</div>
+        <div style="font-size:26px;font-weight:800;color:#2E7D32">€24,90</div>
+        <div style="font-size:11px;color:#888">8,30€/mese</div>
       </div>
-      <div onclick="avviaCheckout('semest')" style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative" onmouseover="this.style.borderColor='#F57F17';this.style.background='#FFF8F0'" onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
-        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#F57F17;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 20%</div>
+      <!-- 6 MESI -->
+      <div onclick="avviaCheckout('semest')"
+        style="border:2px solid #E0E0E0;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative"
+        onmouseover="this.style.borderColor='#F57F17';this.style.background='#FFF8F0'"
+        onmouseout="this.style.borderColor='#E0E0E0';this.style.background='#fff'">
+        <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#F57F17;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">RISPARMIA 25%</div>
         <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">6 MESI</div>
-        <div style="font-size:26px;font-weight:800;color:#F57F17">€188</div>
-        <div style="font-size:11px;color:#888">31€/mese</div>
+        <div style="font-size:26px;font-weight:800;color:#F57F17">€44,90</div>
+        <div style="font-size:11px;color:#888">7,48€/mese</div>
       </div>
-      <div onclick="avviaCheckout('annuale')" style="border:2px solid #6A1B9A;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative;background:#FAF5FF" onmouseover="this.style.background='#F3E8FF'" onmouseout="this.style.background='#FAF5FF'">
+      <!-- ANNUALE -->
+      <div onclick="avviaCheckout('annuale')"
+        style="border:2px solid #6A1B9A;border-radius:10px;padding:16px;cursor:pointer;text-align:center;position:relative;background:#FAF5FF"
+        onmouseover="this.style.background='#F3E8FF'"
+        onmouseout="this.style.background='#FAF5FF'">
         <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#6A1B9A;color:#fff;font-size:9px;font-weight:700;padding:2px 10px;border-radius:10px">MIGLIORE OFFERTA</div>
         <div style="font-size:11px;color:#6A1B9A;font-weight:600;margin-bottom:4px">ANNUALE</div>
-        <div style="font-size:26px;font-weight:800;color:#6A1B9A">€336</div>
-        <div style="font-size:11px;color:#888">28€/mese</div>
-      </div>
-    </div>
+        <div style="font-size:26px;font-weight:800;color:#6A1B9A">€79,90</div>
+        <div style="font-size:11px;color:#888">6,66€/mese</div>
+      </div></div>
 
     <div id="checkout-loading" style="display:none;color:#1565C0;font-size:13px;margin-bottom:12px">
       ⏳ Reindirizzamento a Stripe...
@@ -7913,7 +7931,7 @@ function apriMenuAccount(){
         <button onclick="apriPortaleCliente();document.getElementById('account-menu-overlay').remove()"
           style="width:100%;padding:10px 14px;text-align:left;background:#E8F5E9;border:1px solid #A5D6A7;
             border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:#2E7D32;margin-bottom:6px">
-          💳 Gestisci abbonamento / Fatture
+          💳 Pagamenti e abbonamento
         </button>` : ''}
         ${isTrial ? `
         <button onclick="document.getElementById('subscription-screen').style.display='flex';document.getElementById('account-menu-overlay').remove()"
@@ -7939,7 +7957,29 @@ function apriMenuAccount(){
     if(!overlay.contains(e.target)){ overlay.remove(); document.removeEventListener('click',h); }
   }), 100);
 }
+
+// Chiusura ESC globale per tutti i modal/overlay
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  // Lista overlay da chiudere con ESC
+  const ids = [
+    'apri-menu-overlay','salva-menu-overlay','account-menu-overlay',
+    'ob-overlay','apri-cal-note-popup','cal-note-popup'
+  ];
+  for(const id of ids){
+    const el = document.getElementById(id);
+    if(el){ el.remove(); return; }
+  }
+  // Subscription screen
+  const sub = document.getElementById('subscription-screen');
+  if(sub && sub.style.display !== 'none'){ sub.style.display = 'none'; return; }
+  // Modal mbg open
+  const openModal = document.querySelector('.mbg.open');
+  if(openModal){ openModal.classList.remove('open'); }
+});
+
 </script>
+
 
 
 

@@ -1,18 +1,12 @@
-// ═══════════════════════════════════════════════════════════════════
 // Netlify Function: create-checkout
-// Crea sessione Stripe Checkout — mode: subscription (ricorrente)
 // POST /.netlify/functions/create-checkout
 // Body: { plan, userId, userEmail }
-// ═══════════════════════════════════════════════════════════════════
-const Stripe = require('stripe');
 
-// Piani — i Price ID devono essere prezzi RICORRENTI su Stripe Dashboard
-// (Products → Add product → Recurring → mensile/trimestrale/ecc.)
 const PLANS = {
-  mensile:  { price_id: process.env.STRIPE_PRICE_MENSILE,  label: 'Piano Mensile',  interval: 'month', interval_count: 1  },
-  trimest:  { price_id: process.env.STRIPE_PRICE_TRIMEST,  label: 'Piano 3 Mesi',   interval: 'month', interval_count: 3  },
-  semest:   { price_id: process.env.STRIPE_PRICE_SEMEST,   label: 'Piano 6 Mesi',   interval: 'month', interval_count: 6  },
-  annuale:  { price_id: process.env.STRIPE_PRICE_ANNUALE,  label: 'Piano Annuale',  interval: 'year',  interval_count: 1  },
+  mensile:  { price_id: process.env.STRIPE_PRICE_MENSILE,  label: 'Piano Mensile',  months: 1  },
+  trimest:  { price_id: process.env.STRIPE_PRICE_TRIMEST,  label: 'Piano 3 Mesi',   months: 3  },
+  semest:   { price_id: process.env.STRIPE_PRICE_SEMEST,   label: 'Piano 6 Mesi',   months: 6  },
+  annuale:  { price_id: process.env.STRIPE_PRICE_ANNUALE,  label: 'Piano Annuale',  months: 12 },
 };
 
 exports.handler = async (event) => {
@@ -20,14 +14,21 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // Validazione env vars
-  if (!process.env.STRIPE_SECRET_KEY) {
-    console.error('STRIPE_SECRET_KEY mancante');
-    return { statusCode: 500, body: JSON.stringify({ error: 'Configurazione server incompleta' }) };
+  // ── Valida env vars prima di tutto ──
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) {
+    console.error('[create-checkout] STRIPE_SECRET_KEY non trovata nelle env vars');
+    return { statusCode: 500, body: JSON.stringify({
+      error: 'Configurazione server incompleta — contattare supporto'
+    })};
   }
 
+  // ── Init Stripe con chiave esplicita ──
+  const stripe = require('stripe')(stripeKey);
+
   try {
-    const { plan, userId, userEmail } = JSON.parse(event.body || '{}');
+    const body = JSON.parse(event.body || '{}');
+    const { plan, userId, userEmail } = body;
 
     if (!plan || !PLANS[plan]) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Piano non valido: ' + plan }) };
@@ -38,29 +39,27 @@ exports.handler = async (event) => {
 
     const planData = PLANS[plan];
     if (!planData.price_id) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'Price ID non configurato per piano: ' + plan }) };
+      return { statusCode: 400, body: JSON.stringify({
+        error: 'Price ID non configurato per: ' + plan + ' — verificare env vars STRIPE_PRICE_*'
+      })};
     }
 
-    const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
     const appUrl = process.env.APP_URL || 'https://visionary-lamington-701083.netlify.app';
 
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',                 // ← ABBONAMENTO RICORRENTE
+      mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: planData.price_id, quantity: 1 }],
       customer_email: userEmail,
-      client_reference_id: userId,          // userId passato come reference
-      metadata: { userId, plan },           // anche nei metadata per il webhook
-      subscription_data: {
-        metadata: { userId, plan },         // nei metadata della subscription
-      },
+      client_reference_id: userId,
+      metadata: { userId, plan },
+      subscription_data: { metadata: { userId, plan } },
       success_url: appUrl + '/?payment=success&session_id={CHECKOUT_SESSION_ID}',
       cancel_url:  appUrl + '/?payment=cancelled',
       locale: 'it',
     });
 
-    console.log('Checkout session created:', session.id, 'user:', userId, 'plan:', plan);
-
+    console.log('[create-checkout] OK session:', session.id, 'user:', userId, 'plan:', plan);
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -68,7 +67,7 @@ exports.handler = async (event) => {
     };
 
   } catch (err) {
-    console.error('create-checkout error:', err.message);
+    console.error('[create-checkout] Error:', err.message);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
