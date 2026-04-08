@@ -295,7 +295,7 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
   <button class="bh acc" onclick="nuovaSett()" id="btn-nuova">🆕 Nuova sett.</button>
   <button class="bh" style="background:#F57C00;color:#fff" onclick="apriCopiaSett()" id="btn-copia">📋 Copia sett.</button>
   <button class="bh" style="background:#1565C0;color:#fff;font-weight:700" onclick="sincronizzaCompleta()" title="Sincronizza calendario ↔ fogli giorni">🔄 Aggiorna</button>
-  <div id="user-bar" style="display:none;align-items:center;gap:6px"><span id="user-email-lbl" style="font-size:10px;color:rgba(255,255,255,.7);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span id="user-plan-badge" style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,.25);color:#fff;font-weight:700"></span><button onclick="doLogout()" style="background:rgba(200,0,0,.35);border:1px solid rgba(255,100,100,.4);color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer" title="Esci">↩ Esci</button></div>
+  <div id="user-bar" style="display:none;align-items:center;gap:6px"><span id="user-email-lbl" style="font-size:10px;color:rgba(255,255,255,.7);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span><span id="user-plan-badge" style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,.25);color:#fff;font-weight:700;cursor:pointer" onclick="apriMenuAccount()" title="Gestisci account"></span><button onclick="doLogout()" style="background:rgba(200,0,0,.35);border:1px solid rgba(255,100,100,.4);color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;cursor:pointer" title="Esci">↩ Esci</button></div>
   <button onclick="apriInfo()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0" title="Info programma">ℹ</button>
   <input type="file" id="fin" accept=".orario,.json" style="display:none" onchange="loadFile(this)">
 </header>
@@ -7865,7 +7865,82 @@ async function _doSalvaEntrambi(){
   notify('☁️💾 Salvato online + scaricato: ' + nome);
 }
 
+async function apriPortaleCliente(){
+  if(!_isCloud || !_companyId || !_currentUser){
+    alert('Devi essere loggato');
+    return;
+  }
+  notify('⏳ Apertura portale abbonamento...');
+  try {
+    const res = await fetch('/.netlify/functions/customer-portal', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ userId: _companyId, userEmail: _currentUser.email }),
+    });
+    const data = await res.json();
+    if(!res.ok || !data.url) throw new Error(data.error || 'Errore');
+    window.location.href = data.url;
+  } catch(err) {
+    console.error('customer-portal:', err);
+    alert('Errore apertura portale: ' + err.message);
+  }
+}
+function apriMenuAccount(){
+  const existing = document.getElementById('account-menu-overlay');
+  if(existing){ existing.remove(); return; }
+
+  const az_piano = document.getElementById('user-plan-badge')?.textContent || '—';
+  const email    = document.getElementById('user-email-lbl')?.textContent || '—';
+  const isPianoLibero = az_piano.includes('OWNER') || az_piano.includes('INTERNO');
+  const isTrial  = az_piano.includes('PROVA');
+  const isPagante = !isPianoLibero && !isTrial && az_piano !== '—';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'account-menu-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.3);'
+    +'display:flex;align-items:flex-start;justify-content:flex-end;padding-top:52px;padding-right:12px';
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.25);
+      min-width:260px;overflow:hidden">
+      <div style="background:#1565C0;padding:12px 16px;color:#fff">
+        <div style="font-size:13px;font-weight:700">${email}</div>
+        <div style="font-size:11px;opacity:.8;margin-top:2px">Piano: ${az_piano}</div>
+      </div>
+      <div style="padding:8px">
+        ${isPagante || isTrial ? `
+        <button onclick="apriPortaleCliente();document.getElementById('account-menu-overlay').remove()"
+          style="width:100%;padding:10px 14px;text-align:left;background:#E8F5E9;border:1px solid #A5D6A7;
+            border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:#2E7D32;margin-bottom:6px">
+          💳 Gestisci abbonamento / Fatture
+        </button>` : ''}
+        ${isTrial ? `
+        <button onclick="document.getElementById('subscription-screen').style.display='flex';document.getElementById('account-menu-overlay').remove()"
+          style="width:100%;padding:10px 14px;text-align:left;background:#E3F2FD;border:1px solid #90CAF9;
+            border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;color:#1565C0;margin-bottom:6px">
+          🚀 Attiva piano completo
+        </button>` : ''}
+        ${isPianoLibero ? `
+        <div style="padding:8px 10px;background:#F3E5F5;border-radius:7px;font-size:11px;
+          color:#6A1B9A;margin-bottom:6px">
+          ${az_piano.includes('OWNER') ? '👑 Account owner — accesso completo' : '🏢 Account interno — accesso gratuito'}
+        </div>` : ''}
+        <button onclick="doLogout();document.getElementById('account-menu-overlay')?.remove()"
+          style="width:100%;padding:9px 14px;text-align:left;background:#fff;border:1px solid #FFCDD2;
+            border-radius:7px;cursor:pointer;font-size:12px;color:#C62828">
+          ↩ Esci dall'account
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.addEventListener('click', function h(e){
+    if(!overlay.contains(e.target)){ overlay.remove(); document.removeEventListener('click',h); }
+  }), 100);
+}
 </script>
+
 
 
 
