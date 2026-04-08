@@ -307,6 +307,7 @@ legend{font-weight:700;color:#444;padding:0 5px;font-size:11px}
   <span id="autosave-lbl" style="font-size:10px;color:rgba(255,255,255,.6);margin-right:4px"></span>
   <button class="bh" onclick="apriMenuSalva()" id="btn-salva">💾 Salva</button>
   <button class="bh" onclick="apriMenuApri()" id="btn-apri">📂 Apri</button>
+  <button class="bh" onclick="apriArchivioRichieste()" id="btn-richieste" style="background:#2E7D32;color:#fff">📋 Richieste</button>
   <button class="bh" style="background:#5C6BC0;color:#fff" onclick="apriMenuStampa()" id="btn-stampa">🖨️ Stampa</button>
   <button class="bh" style="background:#43A047;color:#fff" onclick="esportaRiepilogo()" id="btn-condividi">📤 Condividi</button>
   <button class="bh" style="background:#00695C;color:#fff" onclick="esportaZucchetti()" id="btn-zucchetti">📊 Zucchetti</button>
@@ -430,27 +431,24 @@ function _getAccessLevel(az){
   const piano = az.piano || 'trial';
   const stato = az.stato || 'trial';
 
-  // Piani speciali — sempre full
   if(['owner','interno'].includes(piano)) return 'full';
 
-  // Abbonamento attivo e non scaduto
-  if(stato === 'active'){
+  // 'active' o 'attivo' (compat) = abbonamento pagante
+  if(stato === 'active' || (stato === 'attivo' && piano !== 'trial')){
     if(az.expiration_date && new Date(az.expiration_date) < new Date()) return 'blocked';
     return 'full';
   }
 
-  // Trial attivo
+  // Trial
   if(piano === 'trial' || stato === 'trial' || stato === 'attivo'){
     if(az.trial_end && new Date(az.trial_end) > new Date()) return 'trial';
-    return 'blocked'; // trial scaduto
+    return 'blocked';
   }
 
-  // Pagamento in ritardo — accesso limitato
   if(stato === 'past_due') return 'past_due';
-
-  // Cancellato / sospeso
   return 'blocked';
 }
+
 
 function _getPianoLabel(az){
   if(!az) return '—';
@@ -8390,7 +8388,476 @@ function _buildCalPeriodo(dalD, alD, soloNome, mostraVuoti){
   return html || '<div style="padding:20px;text-align:center;color:#888">Nessun dato nel periodo selezionato</div>';
 }
 
+
+// ═══════════════════════════════════════════════════════════════════
+// RICHIESTE FERIE / PERMESSI
+// CRUD su Supabase tabella richieste_ferie + PDF documento
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Salva richiesta su Supabase ──
+async function salvaRichiestaFerie(req){
+  if(!_isCloud || !_companyId){
+    // Fallback locale: salva in D.richieste_ferie
+    if(!D.richieste_ferie) D.richieste_ferie = [];
+    req.id = 'local_' + Date.now();
+    req.created_at = new Date().toISOString();
+    D.richieste_ferie.push(req);
+    setMod();
+    return req;
+  }
+  const { data, error } = await _sb.from('richieste_ferie').insert({
+    company_id:  _companyId,
+    dipendente:  req.dipendente,
+    tipo:        req.tipo,
+    data_dal:    req.data_dal,
+    data_al:     req.data_al,
+    ore:         req.ore || null,
+    note:        req.note || '',
+    stato:       'richiesto',
+  }).select().single();
+  if(error){ console.error('salvaRichiestaFerie:', error); return null; }
+  return data;
+}
+
+// ── Carica richieste da Supabase ──
+async function caricaRichiesteFerie(filtri){
+  if(!_isCloud || !_companyId){
+    return (D.richieste_ferie || []).filter(r => {
+      if(filtri?.dipendente && r.dipendente !== filtri.dipendente) return false;
+      if(filtri?.dal && r.data_al < filtri.dal) return false;
+      if(filtri?.al  && r.data_dal > filtri.al) return false;
+      return true;
+    });
+  }
+  let q = _sb.from('richieste_ferie').select('*').eq('company_id', _companyId)
+    .order('data_dal', {ascending: false});
+  if(filtri?.dipendente) q = q.eq('dipendente', filtri.dipendente);
+  if(filtri?.dal)        q = q.gte('data_al',   filtri.dal);
+  if(filtri?.al)         q = q.lte('data_dal',  filtri.al);
+  if(filtri?.stato)      q = q.eq('stato',       filtri.stato);
+  const { data, error } = await q;
+  if(error){ console.error('caricaRichiesteFerie:', error); return []; }
+  return data || [];
+}
+
+// ── Aggiorna stato richiesta ──
+async function aggiornaStatoRichiesta(id, stato, approvatoDa){
+  if(!_isCloud || !_companyId){
+    const r = (D.richieste_ferie||[]).find(x=>x.id===id);
+    if(r){ r.stato = stato; r.approvato_da = approvatoDa; }
+    setMod(); return true;
+  }
+  const { error } = await _sb.from('richieste_ferie').update({
+    stato, approvato_da: approvatoDa || null,
+    approvato_at: stato === 'approvato' ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id).eq('company_id', _companyId);
+  return !error;
+}
+
+// ── Genera PDF documento richiesta ──
+async function generaDocumentoRichiesta(req, modalita){
+  const TIPO_LABEL = {
+    ferie:            'Ferie',
+    permesso:         'Permesso',
+    permesso_parziale:'Permesso parziale',
+    assenza:          'Assenza',
+  };
+  const pvNome = D.nome_pv || document.getElementById('user-email-lbl')?.textContent || 'Punto Vendita';
+  const oggi   = new Date().toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
+  const fmtD   = d => new Date(d+'T00:00:00').toLocaleDateString('it-IT', {day:'2-digit',month:'long',year:'numeric'});
+  const tipo   = TIPO_LABEL[req.tipo] || req.tipo;
+  const periodo = req.data_dal === req.data_al
+    ? fmtD(req.data_dal)
+    : `dal ${fmtD(req.data_dal)} al ${fmtD(req.data_al)}`;
+  const db = D.turni_db[req.dipendente] || {};
+  const nomeCognome = (db.cognome || '') + ' ' + (db.nome_dip || req.dipendente);
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;padding:20mm">
+
+      <!-- Intestazione -->
+      <div style="border-bottom:3px solid #1565C0;padding-bottom:12px;margin-bottom:20px;
+        display:flex;justify-content:space-between;align-items:flex-end">
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#1565C0">Gestione Orari PV</div>
+          <div style="font-size:13px;color:#555;margin-top:2px">${pvNome}</div>
+        </div>
+        <div style="text-align:right;font-size:11px;color:#888">
+          <div>Data richiesta: <b>${oggi}</b></div>
+          ${req.id ? `<div style="font-size:9px;color:#CCC">Rif: ${req.id}</div>` : ''}
+        </div>
+      </div>
+
+      <!-- Titolo -->
+      <div style="background:#E3F2FD;border-left:4px solid #1565C0;padding:12px 16px;
+        margin-bottom:24px;border-radius:0 6px 6px 0">
+        <div style="font-size:16px;font-weight:700;color:#1565C0">
+          RICHIESTA DI ${tipo.toUpperCase()}
+        </div>
+      </div>
+
+      <!-- Dati dipendente -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            width:35%;border:1px solid #E0E0E0">Dipendente</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${nomeCognome.trim()}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Punto Vendita</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${pvNome}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Tipo richiesta</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">
+            <span style="background:#E3F2FD;color:#1565C0;padding:2px 10px;
+              border-radius:10px;font-weight:700">${tipo}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Periodo</td>
+          <td style="padding:8px 12px;font-size:13px;font-weight:700;border:1px solid #E0E0E0">
+            ${periodo}
+          </td>
+        </tr>
+        ${req.ore ? `<tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Ore richieste</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">${req.ore}h</td>
+        </tr>` : ''}
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Note / Motivazione</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0;
+            min-height:40px">${req.note || '—'}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;background:#F5F5F5;font-weight:700;font-size:12px;
+            border:1px solid #E0E0E0">Stato</td>
+          <td style="padding:8px 12px;font-size:13px;border:1px solid #E0E0E0">
+            <span style="background:${req.stato==='approvato'?'#C8E6C9':req.stato==='rifiutato'?'#FFCDD2':'#FFF9C4'};
+              color:${req.stato==='approvato'?'#1B5E20':req.stato==='rifiutato'?'#C62828':'#795548'};
+              padding:2px 10px;border-radius:10px;font-weight:700;text-transform:capitalize">
+              ${req.stato || 'Richiesto'}
+            </span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Spazio firme -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:40px">
+            FIRMA DIPENDENTE
+          </div>
+          <div style="border-top:1px solid #333;padding-top:6px;font-size:10px;color:#888">
+            ${nomeCognome.trim()}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#555;margin-bottom:40px">
+            FIRMA STORE MANAGER
+          </div>
+          <div style="border-top:1px solid #333;padding-top:6px;font-size:10px;color:#888">
+            ${req.approvato_da || ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:30px;padding-top:12px;border-top:1px solid #EEE;
+        font-size:9px;color:#AAA;text-align:center">
+        Documento generato il ${oggi} · Gestione Orari PV
+      </div>
+    </div>`;
+
+  const fname = _pdfName(['richiesta', req.tipo, req.dipendente, req.data_dal]);
+
+  if(modalita === 'pdf'){
+    await _generaPDF(`Richiesta ${tipo} — ${nomeCognome.trim()}`, html, fname);
+  } else if(modalita === 'stampa'){
+    _openWin(`Richiesta ${tipo}`, _printToolbar('A4 Verticale') + html);
+  }
+  return html;
+}
+
+// ── Modal nuova richiesta ferie ──
+function apriNuovaRichiesta(dipendente, dal, al){
+  const existing = document.getElementById('rif-overlay');
+  if(existing) existing.remove();
+
+  const nm  = Object.keys(D.turni_db || {}).sort();
+  const oggi = new Date().toISOString().split('T')[0];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'rif-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.55);'
+    +'display:flex;align-items:center;justify-content:center;font-family:inherit';
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+      width:480px;max-width:95vw;overflow:hidden">
+      <div style="background:#2E7D32;color:#fff;padding:14px 18px;display:flex;align-items:center">
+        <span style="font-size:15px;font-weight:700">📋 Nuova richiesta</span>
+        <div style="flex:1"></div>
+        <button onclick="document.getElementById('rif-overlay').remove()"
+          style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
+            padding:3px 9px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:12px">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+              Dipendente *
+            </label>
+            <select id="rif-dip" style="width:100%;padding:8px;border:1px solid #DDD;
+              border-radius:6px;font-size:13px">
+              ${nm.map(n=>`<option value="${n}" ${n===dipendente?'selected':''}>${n}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+              Tipo *
+            </label>
+            <select id="rif-tipo" style="width:100%;padding:8px;border:1px solid #DDD;
+              border-radius:6px;font-size:13px">
+              <option value="ferie">🏖️ Ferie</option>
+              <option value="permesso">📋 Permesso</option>
+              <option value="permesso_parziale">📋 Permesso parziale</option>
+              <option value="assenza">📝 Assenza</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Dal *</label>
+            <input type="date" id="rif-dal" value="${dal||oggi}"
+              style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">Al *</label>
+            <input type="date" id="rif-al" value="${al||dal||oggi}"
+              style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;box-sizing:border-box">
+          </div>
+        </div>
+
+        <div id="rif-ore-row" style="display:none">
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+            Ore (per permesso parziale)
+          </label>
+          <input type="number" id="rif-ore" min="0.5" max="8" step="0.5" value="4"
+            style="width:80px;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px">
+        </div>
+
+        <div>
+          <label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:4px">
+            Note / Motivazione
+          </label>
+          <textarea id="rif-note" rows="3" placeholder="es. Motivi personali, visita medica, ecc."
+            style="width:100%;padding:8px;border:1px solid #DDD;border-radius:6px;font-size:13px;
+              box-sizing:border-box;resize:vertical"></textarea>
+        </div>
+
+        <div style="display:flex;gap:8px;padding-top:4px">
+          <button onclick="_salvaRichiesta()"
+            style="flex:1;padding:11px;background:#2E7D32;color:#fff;border:none;border-radius:8px;
+              font-size:13px;font-weight:700;cursor:pointer">✅ Salva richiesta</button>
+          <button onclick="_salvaRichiesta('pdf')"
+            style="padding:11px 16px;background:#1565C0;color:#fff;border:none;border-radius:8px;
+              font-size:13px;font-weight:700;cursor:pointer">⬇️ Salva + PDF</button>
+          <button onclick="document.getElementById('rif-overlay').remove()"
+            style="padding:11px 14px;background:#fff;border:1px solid #DDD;border-radius:8px;
+              font-size:12px;cursor:pointer">Annulla</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Mostra campo ore solo per permesso parziale
+  overlay.querySelector('#rif-tipo').addEventListener('change', function(){
+    document.getElementById('rif-ore-row').style.display =
+      this.value === 'permesso_parziale' ? 'block' : 'none';
+  });
+
+  document.body.appendChild(overlay);
+}
+
+async function _salvaRichiesta(modalitaPdf){
+  const dip  = document.getElementById('rif-dip')?.value;
+  const tipo = document.getElementById('rif-tipo')?.value;
+  const dal  = document.getElementById('rif-dal')?.value;
+  const al   = document.getElementById('rif-al')?.value;
+  const ore  = document.getElementById('rif-ore')?.value;
+  const note = document.getElementById('rif-note')?.value?.trim();
+
+  if(!dip || !tipo || !dal || !al){ alert('Compila tutti i campi obbligatori'); return; }
+  if(new Date(dal) > new Date(al)){ alert('"Al" deve essere uguale o successiva a "Dal"'); return; }
+
+  const req = { dipendente:dip, tipo, data_dal:dal, data_al:al,
+    ore: tipo==='permesso_parziale'?parseFloat(ore)||4:null, note, stato:'richiesto' };
+
+  const saved = await salvaRichiestaFerie(req);
+  if(!saved){ alert('Errore nel salvataggio'); return; }
+
+  document.getElementById('rif-overlay')?.remove();
+  notify('✅ Richiesta salvata' + (modalitaPdf?' — generazione PDF...':''));
+
+  // Aggiorna anche D.ferie_annuali per il calendario
+  const d0 = new Date(dal+'T00:00:00');
+  const d1 = new Date(al+'T00:00:00');
+  if(!D.ferie_annuali) D.ferie_annuali = {};
+  for(let d=new Date(d0); d<=d1; d.setDate(d.getDate()+1)){
+    const ak  = String(d.getFullYear());
+    const dk  = ak+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(!D.ferie_annuali[ak]) D.ferie_annuali[ak] = {};
+    if(!D.ferie_annuali[ak][dip]) D.ferie_annuali[ak][dip] = {};
+    D.ferie_annuali[ak][dip][dk] = { tipo, ore:req.ore, note };
+  }
+  setMod();
+
+  if(modalitaPdf) await generaDocumentoRichiesta({...req, id: saved.id}, 'pdf');
+}
+
+// ── Archivio richieste ──
+async function apriArchivioRichieste(){
+  const existing = document.getElementById('arch-overlay');
+  if(existing){ existing.remove(); return; }
+
+  const nm = ['Tutti', ...Object.keys(D.turni_db||{}).sort()];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'arch-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.5);'
+    +'display:flex;align-items:center;justify-content:center;font-family:inherit';
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+
+  const oggi   = new Date();
+  const dal6   = new Date(oggi.getFullYear(), oggi.getMonth()-5, 1).toISOString().split('T')[0];
+  const fine   = oggi.toISOString().split('T')[0];
+
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.3);
+      width:780px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:#37474F;color:#fff;padding:14px 18px;display:flex;align-items:center">
+        <span style="font-size:15px;font-weight:700">📋 Archivio richieste ferie e permessi</span>
+        <div style="flex:1"></div>
+        <button onclick="apriNuovaRichiesta()" style="background:rgba(255,255,255,.2);border:none;
+          color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;margin-right:8px">
+          + Nuova richiesta</button>
+        <button onclick="document.getElementById('arch-overlay').remove()"
+          style="background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:5px;
+            padding:3px 9px;cursor:pointer">✕</button>
+      </div>
+
+      <!-- Filtri -->
+      <div style="padding:10px 14px;border-bottom:1px solid #EEE;display:flex;gap:8px;flex-wrap:wrap;
+        align-items:center;background:#F9FAFB">
+        <select id="arch-dip" style="padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+          ${nm.map(n=>`<option value="${n==='Tutti'?'':n}">${n}</option>`).join('')}
+        </select>
+        <input type="date" id="arch-dal" value="${dal6}"
+          style="padding:6px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+        <input type="date" id="arch-al" value="${fine}"
+          style="padding:6px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+        <select id="arch-stato" style="padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:12px">
+          <option value="">Tutti gli stati</option>
+          <option value="richiesto">Richiesto</option>
+          <option value="approvato">Approvato</option>
+          <option value="rifiutato">Rifiutato</option>
+          <option value="archiviato">Archiviato</option>
+        </select>
+        <button onclick="_archCarica()"
+          style="padding:6px 14px;background:#37474F;color:#fff;border:none;border-radius:6px;
+            font-size:12px;cursor:pointer;font-weight:600">🔍 Cerca</button>
+      </div>
+
+      <!-- Lista -->
+      <div id="arch-body" style="overflow-y:auto;flex:1;padding:12px 14px">
+        <div style="text-align:center;color:#888;padding:32px">⏳ Caricamento...</div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+  await _archCarica();
+}
+
+async function _archCarica(){
+  const dip   = document.getElementById('arch-dip')?.value || '';
+  const dal   = document.getElementById('arch-dal')?.value;
+  const al    = document.getElementById('arch-al')?.value;
+  const stato = document.getElementById('arch-stato')?.value;
+  const body  = document.getElementById('arch-body');
+  if(!body) return;
+
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:#888">⏳</div>';
+  const list = await caricaRichiesteFerie({ dipendente:dip||null, dal, al, stato:stato||null });
+
+  if(!list.length){
+    body.innerHTML = '<div style="text-align:center;padding:32px;color:#888">Nessuna richiesta trovata</div>';
+    return;
+  }
+
+  const TIPO_COL = {
+    ferie:'#C8E6C9', permesso:'#BBDEFB', permesso_parziale:'#E3F2FD', assenza:'#FFF9C4'
+  };
+  const STATO_COL = {
+    richiesto:{bg:'#FFF9C4',c:'#795548'}, approvato:{bg:'#C8E6C9',c:'#1B5E20'},
+    rifiutato:{bg:'#FFCDD2',c:'#C62828'}, archiviato:{bg:'#F5F5F5',c:'#888'}
+  };
+
+  body.innerHTML = list.map(r=>{
+    const fmtD  = d => new Date(d+'T00:00:00').toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'});
+    const sc    = STATO_COL[r.stato] || STATO_COL.richiesto;
+    const safe  = JSON.stringify(r).replace(/"/g,'&quot;');
+    return `<div style="border:1px solid #E0E0E0;border-radius:8px;padding:10px 14px;
+      margin-bottom:6px;display:flex;align-items:center;gap:10px">
+      <div style="background:${TIPO_COL[r.tipo]||'#F5F5F5'};border-radius:6px;padding:4px 10px;
+        font-size:11px;font-weight:700;white-space:nowrap">${r.tipo}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px">${r.dipendente}</div>
+        <div style="font-size:11px;color:#555">${fmtD(r.data_dal)} → ${fmtD(r.data_al)}
+          ${r.ore?` · ${r.ore}h`:''}</div>
+        ${r.note?`<div style="font-size:10px;color:#888;font-style:italic">${r.note}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        <span style="background:${sc.bg};color:${sc.c};border-radius:10px;padding:2px 8px;
+          font-size:10px;font-weight:700">${r.stato}</span>
+        <div style="display:flex;gap:4px">
+          <button onclick="generaDocumentoRichiesta(${safe},'pdf')"
+            style="background:#1565C0;color:#fff;border:none;border-radius:4px;padding:3px 8px;
+              font-size:10px;cursor:pointer">⬇️ PDF</button>
+          ${r.stato==='richiesto'?`
+          <button onclick="_archApprova('${r.id}')"
+            style="background:#2E7D32;color:#fff;border:none;border-radius:4px;padding:3px 8px;
+              font-size:10px;cursor:pointer">✓ Approva</button>
+          <button onclick="_archRifiuta('${r.id}')"
+            style="background:#C62828;color:#fff;border:none;border-radius:4px;padding:3px 8px;
+              font-size:10px;cursor:pointer">✗</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function _archApprova(id){
+  const manager = D.nome_manager || '';
+  await aggiornaStatoRichiesta(id, 'approvato', manager);
+  notify('✅ Richiesta approvata');
+  await _archCarica();
+}
+async function _archRifiuta(id){
+  await aggiornaStatoRichiesta(id, 'rifiutato', null);
+  notify('❌ Richiesta rifiutata');
+  await _archCarica();
+}
+
 </script>
+
 
 
 
