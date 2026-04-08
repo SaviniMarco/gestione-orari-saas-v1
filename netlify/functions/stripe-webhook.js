@@ -1,9 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
-// Netlify Function: stripe-webhook
-// Riceve eventi Stripe → aggiorna Supabase
+// stripe-webhook.js — Netlify Function
 // POST /.netlify/functions/stripe-webhook
 // ═══════════════════════════════════════════════════════════════════
-const Stripe = require('stripe');
 const { createClient } = require('@supabase/supabase-js');
 
 exports.handler = async (event) => {
@@ -11,113 +9,117 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+  const stripeKey     = process.env.STRIPE_SECRET_KEY;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!stripeKey || !webhookSecret) {
+    console.error('[webhook] Env vars mancanti: STRIPE_SECRET_KEY o STRIPE_WEBHOOK_SECRET');
+    return { statusCode: 500, body: 'Configurazione incompleta' };
+  }
+
+  const stripe = require('stripe')(stripeKey);
   const sig    = event.headers['stripe-signature'];
 
-  // Verifica firma webhook
   let stripeEvent;
   try {
-    stripeEvent = stripe.webhooks.constructEvent(
-      event.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    stripeEvent = stripe.webhooks.constructEvent(event.body, sig, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature failed:', err.message);
+    console.error('[webhook] Firma non valida:', err.message);
     return { statusCode: 400, body: `Webhook Error: ${err.message}` };
   }
 
-  // Supabase con service role (solo server-side)
   const sb = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
   const type = stripeEvent.type;
-  console.log('Stripe event:', type);
+  console.log(`[webhook] Evento: ${type}`);
+
+  // ── Helper: aggiorna aziende per userId ──
+  async function updateAzienda(userId, fields) {
+    const { error } = await sb.from('aziende')
+      .update({ ...fields, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+    if (error) console.error('[webhook] Supabase update error:', error.message);
+    else console.log('[webhook] Supabase aggiornato:', userId, fields);
+    return !error;
+  }
 
   try {
 
-    // ── Checkout completato ──────────────────────────────────────
+    // ── checkout.session.completed ───────────────────────────────
     if (type === 'checkout.session.completed') {
-      const session = stripeEvent.data.object;
-      const userId  = session.metadata?.userId || session.client_reference_id;
-      const plan    = session.metadata?.plan || 'mensile';
+      const session  = stripeEvent.data.object;
+      const userId   = session.metadata?.userId || session.client_reference_id;
+      const plan     = session.metadata?.plan || 'mensile';
+      const custId   = session.customer;
+      const subId    = session.subscription;
 
       if (!userId) {
-        console.error('userId mancante nella session:', session.id);
+        console.error('[webhook] userId mancante nella session:', session.id);
         return { statusCode: 400, body: 'userId mancante' };
       }
 
-      // Recupera subscription per avere current_period_end
-      let expirationDate = null;
-      if (session.subscription) {
-        const sub = await stripe.subscriptions.retrieve(session.subscription);
-        expirationDate = new Date(sub.current_period_end * 1000).toISOString();
+      let expDate = null;
+      if (subId) {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        expDate   = new Date(sub.current_period_end * 1000).toISOString();
       }
 
-      const { error } = await sb.from('aziende').update({
-        piano:            plan,
-        stato:            'attivo',
-        expiration_date:  expirationDate,
-        stripe_session:   session.id,
-        updated_at:       new Date().toISOString(),
-      }).eq('id', userId);
+      await updateAzienda(userId, {
+        piano:                  plan,
+        stato:                  'active',
+        expiration_date:        expDate,
+        stripe_customer_id:     custId,
+        stripe_subscription_id: subId,
+        stripe_session:         session.id,
+      });
 
-      if (error) {
-        console.error('Supabase update error:', error.message);
-        return { statusCode: 500, body: 'DB update failed' };
-      }
-      console.log('✅ Piano attivato:', userId, plan, 'scade:', expirationDate);
+      console.log(`[webhook] ✅ Piano attivato: ${userId} → ${plan}, scade: ${expDate}`);
     }
 
-    // ── Abbonamento rinnovato ────────────────────────────────────
-    if (type === 'invoice.payment_succeeded') {
+    // ── invoice.payment_succeeded (rinnovo) ─────────────────────
+    else if (type === 'invoice.payment_succeeded') {
       const invoice = stripeEvent.data.object;
-      if (invoice.billing_reason !== 'subscription_cycle') return { statusCode: 200, body: 'ok' };
-
+      if (invoice.billing_reason !== 'subscription_cycle') {
+        return { statusCode: 200, body: JSON.stringify({ received: true }) };
+      }
       const sub    = await stripe.subscriptions.retrieve(invoice.subscription);
       const userId = sub.metadata?.userId;
-      if (!userId) return { statusCode: 200, body: 'no userId' };
+      if (!userId) { console.warn('[webhook] rinnovo senza userId'); return { statusCode: 200, body: 'ok' }; }
 
-      const expirationDate = new Date(sub.current_period_end * 1000).toISOString();
-      await sb.from('aziende').update({
-        stato:           'attivo',
-        expiration_date: expirationDate,
-        updated_at:      new Date().toISOString(),
-      }).eq('id', userId);
-      console.log('🔄 Abbonamento rinnovato:', userId, 'nuova scadenza:', expirationDate);
+      await updateAzienda(userId, {
+        stato:                  'active',
+        expiration_date:        new Date(sub.current_period_end * 1000).toISOString(),
+        stripe_subscription_id: sub.id,
+      });
+      console.log(`[webhook] 🔄 Rinnovato: ${userId}`);
     }
 
-    // ── Pagamento fallito ────────────────────────────────────────
-    if (type === 'invoice.payment_failed') {
+    // ── invoice.payment_failed ───────────────────────────────────
+    else if (type === 'invoice.payment_failed') {
       const invoice = stripeEvent.data.object;
       const sub     = await stripe.subscriptions.retrieve(invoice.subscription);
       const userId  = sub.metadata?.userId;
       if (userId) {
-        await sb.from('aziende').update({
-          stato:      'pagamento_fallito',
-          updated_at: new Date().toISOString(),
-        }).eq('id', userId);
-        console.warn('❌ Pagamento fallito per:', userId);
+        await updateAzienda(userId, { stato: 'past_due' });
+        console.warn(`[webhook] ❌ Pagamento fallito: ${userId}`);
       }
     }
 
-    // ── Abbonamento cancellato ───────────────────────────────────
-    if (type === 'customer.subscription.deleted') {
+    // ── customer.subscription.deleted ───────────────────────────
+    else if (type === 'customer.subscription.deleted') {
       const sub    = stripeEvent.data.object;
       const userId = sub.metadata?.userId;
       if (userId) {
-        await sb.from('aziende').update({
-          stato:      'sospeso',
-          updated_at: new Date().toISOString(),
-        }).eq('id', userId);
-        console.log('🚫 Abbonamento cancellato per:', userId);
+        await updateAzienda(userId, { stato: 'canceled', expiration_date: new Date().toISOString() });
+        console.log(`[webhook] 🚫 Abbonamento cancellato: ${userId}`);
       }
     }
 
   } catch (err) {
-    console.error('Webhook handler error:', err.message);
+    console.error('[webhook] Handler error:', err.message);
     return { statusCode: 500, body: err.message };
   }
 
