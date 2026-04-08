@@ -1,0 +1,9 @@
+{
+  "name": "gestione-orari-saas",
+  "version": "1.0.0",
+  "description": "Gestione Orari PV - SaaS backend functions",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "stripe": "^14.18.0"
+  }
+}
